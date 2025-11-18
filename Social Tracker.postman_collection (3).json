@@ -1,0 +1,860 @@
+{
+	"info": {
+		"_postman_id": "84db4761-5e47-4593-8a6f-f613dabd01de",
+		"name": "Social Tracker",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "17556194"
+	},
+	"item": [
+		{
+			"name": "Api Test",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"// Configuration\r",
+							"const BASE_URL = 'https://social-tracker.automasterpro.net';\r",
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"// Save BASE_URL for use in requests\r",
+							"pm.collectionVariables.set(\"BASE_URL\", BASE_URL);\r",
+							"\r",
+							"// Get current timestamp (epoch seconds)\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"\r",
+							"// Get request method and full path (including query string)\r",
+							"const method = pm.request.method;\r",
+							"const url = pm.request.url;\r",
+							"const path = url.getPath() + (url.getQueryString() ? '?' + url.getQueryString() : '');\r",
+							"\r",
+							"// Build string to sign\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"\r",
+							"// Generate HMAC-SHA256 signature\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"// Set headers\r",
+							"pm.request.headers.upsert({key: 'X-Api-Key', value: API_KEY});\r",
+							"pm.request.headers.upsert({key: 'X-Timestamp', value: timestamp.toString()});\r",
+							"pm.request.headers.upsert({key: 'X-Signature', value: signature});\r",
+							"\r",
+							"// Add Authorization header if ACCESS_TOKEN exists\r",
+							"const accessToken = pm.collectionVariables.get(\"ACCESS_TOKEN\");\r",
+							"if (accessToken) {\r",
+							"    pm.request.headers.upsert({key: 'Authorization', value: `Bearer ${accessToken}`});\r",
+							"}\r",
+							"\r",
+							"console.log('Method:', method);\r",
+							"console.log('Path:', path);\r",
+							"console.log('Timestamp:', timestamp);\r",
+							"console.log('String to sign:', stringToSign);\r",
+							"console.log('Signature:', signature);\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/api/test",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"test"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Api Auth",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"action\": \"google_login\",\n    \"google_id\": \"test_google_id_1\",\n    \"email\": \"test@example.com\",\n    \"name\": \"Test User\",\n    \"device_id\" : \"device_1\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/auth",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"auth"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "ADD Target",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"const method = 'POST';\r",
+							"const path = '/api/targets';\r",
+							"\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"pm.collectionVariables.set(\"API_KEY\", API_KEY);\r",
+							"pm.collectionVariables.set(\"TIMESTAMP\", timestamp);\r",
+							"pm.collectionVariables.set(\"SIGNATURE\", signature);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "{{API_KEY}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Timestamp",
+						"value": "{{TIMESTAMP}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Signature",
+						"value": "{{SIGNATURE}}",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0OTAyNjAsImV4cCI6MTc1OTQ5Mzg2MCwidXNlcl9pZCI6MSwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwidHlwZSI6ImFjY2VzcyIsImRldmljZV9pZCI6ImRldmljZV8xIn0.Fakhzhcnbh6ul883sRG_Zpn8g7FTVEF2_h5o5qUov9o",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"platform\": \"instagram\",\n    \"username\": \"instagram\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/targets",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"targets"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Refresh Token",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"action\": \"refresh_token\",\r\n    \"refresh_token\": \"eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0ODkzNjEsImV4cCI6MTc2MDA5NDE2MSwidXNlcl9pZCI6MSwidHlwZSI6InJlZnJlc2giLCJkZXZpY2VfaWQiOiJkZXZpY2VfMSJ9.ObrV0YJlhV1sEWTJGO5XQX_EnaoBrsBL0Bv96I9atDY\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/auth",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"auth"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Subscribtion",
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"const method = 'GET';\r",
+							"const path = '/api/subscription';\r",
+							"\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"// Set as variables instead of headers\r",
+							"pm.collectionVariables.set(\"API_KEY\", API_KEY);\r",
+							"pm.collectionVariables.set(\"TIMESTAMP\", timestamp);\r",
+							"pm.collectionVariables.set(\"SIGNATURE\", signature);\r",
+							"\r",
+							"console.log('String to sign:', stringToSign);\r",
+							"console.log('Signature:', signature);\r",
+							"\r",
+							"const accessToken = pm.collectionVariables.get(\"ACCESS_TOKEN\");\r",
+							"console.log('Token being used:', accessToken);\r",
+							"console.log('Token length:', accessToken ? accessToken.length : 0);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"disabled": true
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "{{API_KEY}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Timestamp",
+						"value": "{{TIMESTAMP}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Signature",
+						"value": "{{SIGNATURE}}",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0NzczNTcsImV4cCI6MTc1OTQ4MDk1NywidXNlcl9pZCI6MSwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwidHlwZSI6ImFjY2VzcyJ9.iY90-8NsgTqIVYYkZTblA-XzOCyijj7RPcpQCoDAaxI",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"action\": \"google_login\",\n    \"google_id\": \"test_google_id_1\",\n    \"email\": \"test@example.com\",\n    \"name\": \"Test User\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/subscription",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"subscription"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get Target Followings",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"const method = 'GET';\r",
+							"const path = '/api/social?platform=instagram&username=instagram&action=following&target_id=1';\r",
+							"\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"pm.collectionVariables.set(\"API_KEY\", API_KEY);\r",
+							"pm.collectionVariables.set(\"TIMESTAMP\", timestamp);\r",
+							"pm.collectionVariables.set(\"SIGNATURE\", signature);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "{{API_KEY}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Timestamp",
+						"value": "{{TIMESTAMP}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Signature",
+						"value": "{{SIGNATURE}}",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0OTAyNjAsImV4cCI6MTc1OTQ5Mzg2MCwidXNlcl9pZCI6MSwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwidHlwZSI6ImFjY2VzcyIsImRldmljZV9pZCI6ImRldmljZV8xIn0.Fakhzhcnbh6ul883sRG_Zpn8g7FTVEF2_h5o5qUov9o",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"platform\": \"instagram\",\n    \"username\": \"instagram\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/social?platform=instagram&username=instagram&action=following&target_id=1",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"social"
+					],
+					"query": [
+						{
+							"key": "platform",
+							"value": "instagram"
+						},
+						{
+							"key": "username",
+							"value": "instagram"
+						},
+						{
+							"key": "action",
+							"value": "following"
+						},
+						{
+							"key": "target_id",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get Target Followers",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"const method = 'GET';\r",
+							"const path = '/api/social?platform=instagram&username=7hadizd&action=followers&target_id=4';\r",
+							"\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"pm.collectionVariables.set(\"API_KEY\", API_KEY);\r",
+							"pm.collectionVariables.set(\"TIMESTAMP\", timestamp);\r",
+							"pm.collectionVariables.set(\"SIGNATURE\", signature);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "{{API_KEY}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Timestamp",
+						"value": "{{TIMESTAMP}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Signature",
+						"value": "{{SIGNATURE}}",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0ODY2MTYsImV4cCI6MTc1OTQ5MDIxNiwidXNlcl9pZCI6MSwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwidHlwZSI6ImFjY2VzcyJ9.6E_Lu6Ge1bPsGX3KjWIM-vAhqNggmxWz6DPQOKGLJMQ",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"platform\": \"instagram\",\n    \"username\": \"instagram\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/social?platform=instagram&username=7hadizd&action=followers&target_id=4",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"social"
+					],
+					"query": [
+						{
+							"key": "platform",
+							"value": "instagram"
+						},
+						{
+							"key": "username",
+							"value": "7hadizd"
+						},
+						{
+							"key": "action",
+							"value": "followers"
+						},
+						{
+							"key": "target_id",
+							"value": "4"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get Target Info",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"const method = 'GET';\r",
+							"const path = '/api/social?platform=instagram&username=instagram&action=userinfo&target_id=1';\r",
+							"\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"pm.collectionVariables.set(\"API_KEY\", API_KEY);\r",
+							"pm.collectionVariables.set(\"TIMESTAMP\", timestamp);\r",
+							"pm.collectionVariables.set(\"SIGNATURE\", signature);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "{{API_KEY}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Timestamp",
+						"value": "{{TIMESTAMP}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Signature",
+						"value": "{{SIGNATURE}}",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0ODI0MzAsImV4cCI6MTc1OTQ4NjAzMCwidXNlcl9pZCI6MSwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwidHlwZSI6ImFjY2VzcyJ9.EjLvHq3R50lejXkj3gW_RM2UJqwLtv2ORyLuN5ZO3ac",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"platform\": \"instagram\",\n    \"username\": \"instagram\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/social?platform=instagram&username=instagram&action=userinfo&target_id=1",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"social"
+					],
+					"query": [
+						{
+							"key": "platform",
+							"value": "instagram"
+						},
+						{
+							"key": "username",
+							"value": "instagram"
+						},
+						{
+							"key": "action",
+							"value": "userinfo"
+						},
+						{
+							"key": "target_id",
+							"value": "1"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete Target",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"const method = 'DELETE';\r",
+							"const path = '/api/targets';\r",
+							"\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"pm.collectionVariables.set(\"API_KEY\", API_KEY);\r",
+							"pm.collectionVariables.set(\"TIMESTAMP\", timestamp);\r",
+							"pm.collectionVariables.set(\"SIGNATURE\", signature);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "{{API_KEY}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Timestamp",
+						"value": "{{TIMESTAMP}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Signature",
+						"value": "{{SIGNATURE}}",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0ODI0MzAsImV4cCI6MTc1OTQ4NjAzMCwidXNlcl9pZCI6MSwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwidHlwZSI6ImFjY2VzcyJ9.EjLvHq3R50lejXkj3gW_RM2UJqwLtv2ORyLuN5ZO3ac",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"target_id\": 1\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/targets",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"targets"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Target",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const API_KEY = 'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196';\r",
+							"const API_SECRET = '13397ff2fb52da6cc9beeb802bc1e41d35b655268e88007360e149d8744e5784';\r",
+							"\r",
+							"const timestamp = Math.floor(Date.now() / 1000);\r",
+							"const method = 'GET';\r",
+							"const path = '/api/targets';\r",
+							"\r",
+							"const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;\r",
+							"const signature = CryptoJS.HmacSHA256(stringToSign, API_SECRET).toString(CryptoJS.enc.Hex);\r",
+							"\r",
+							"pm.collectionVariables.set(\"API_KEY\", API_KEY);\r",
+							"pm.collectionVariables.set(\"TIMESTAMP\", timestamp);\r",
+							"pm.collectionVariables.set(\"SIGNATURE\", signature);"
+						],
+						"type": "text/javascript",
+						"packages": {},
+						"requests": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					},
+					{
+						"key": "X-Api-Key",
+						"value": "{{API_KEY}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Timestamp",
+						"value": "{{TIMESTAMP}}",
+						"type": "text"
+					},
+					{
+						"key": "X-Signature",
+						"value": "{{SIGNATURE}}",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJzb2NpYWwtdHJhY2tlci1hcGkiLCJpYXQiOjE3NTk0OTAyNjAsImV4cCI6MTc1OTQ5Mzg2MCwidXNlcl9pZCI6MSwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwidHlwZSI6ImFjY2VzcyIsImRldmljZV9pZCI6ImRldmljZV8xIn0.Fakhzhcnbh6ul883sRG_Zpn8g7FTVEF2_h5o5qUov9o",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/targets",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"targets"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": ""
+		},
+		{
+			"key": "API_KEY",
+			"value": ""
+		},
+		{
+			"key": "TIMESTAMP",
+			"value": ""
+		},
+		{
+			"key": "SIGNATURE",
+			"value": ""
+		}
+	]
+}

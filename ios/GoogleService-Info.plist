@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>AIzaSyDc7ug0IEZKQDYdZdkwxVZI3NMTtgxO_cw</string>
+	<key>GCM_SENDER_ID</key>
+	<string>691913957787</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.mni.katcha.social.follower.tracker</string>
+	<key>PROJECT_ID</key>
+	<string>katcha-c9a23</string>
+	<key>STORAGE_BUCKET</key>
+	<string>katcha-c9a23.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:691913957787:ios:350952baaaacb178fa013e</string>
+</dict>
+</plist>
