@@ -11,8 +11,8 @@ workflows:
         bundle_identifier: com.mni.katcha.social.follower.tracker
       vars:
         BUNDLE_ID: 'com.mni.katcha.social.follower.tracker'
-        XCODE_WORKSPACE: 'MyMNIProject'
-        XCODE_SCHEME: 'MyMNIProject'
+        XCODE_WORKSPACE: 'Katcha'
+        XCODE_SCHEME: 'Katcha'
       node: latest
       xcode: latest
       cocoapods: default

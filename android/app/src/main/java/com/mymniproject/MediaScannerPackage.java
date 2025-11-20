@@ -1,4 +1,4 @@
-package com.mymniproject;
+package com.Katcha;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

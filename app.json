@@ -1,6 +1,6 @@
 {
-  "name": "MyMNIProject",
-  "displayName": "MyMNIProject",
+  "name": "Katcha",
+  "displayName": "Katcha",
   "react-native-google-mobile-ads": {
     "_comment": "IMPORTANT: Replace these with your actual AdMob App IDs from your AdMob console",
     "android_app_id": "ca-app-pub-3144169908690020~XXXXXXXXXX",

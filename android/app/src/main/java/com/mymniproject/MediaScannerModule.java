@@ -1,4 +1,4 @@
-package com.mymniproject;
+package com.Katcha;
 
 import android.content.Context;
 import android.media.MediaScannerConnection;
