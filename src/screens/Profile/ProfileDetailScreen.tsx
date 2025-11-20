@@ -36,8 +36,8 @@ export default function ProfileDetailScreen({ navigation }: Props): React.ReactE
             <Icon name="chevron-back" size={20} color="#000000" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>My Profile</Text>
-          <TouchableOpacity style={[styles.circleBtn, { backgroundColor: '#FFFFFF', ...shadows.small }]}>
-            <Icon name="create-outline" size={18} color="#000000" />
+          <TouchableOpacity style={[styles.circleBtn, { backgroundColor: 'transparent', ...shadows.small }]}>
+            <Icon name="" size={18} color="#000000" />
           </TouchableOpacity>
         </View>
       </SafeAreaView>

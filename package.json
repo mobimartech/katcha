@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-native-firebase/auth": "^23.4.0",
     "@react-native-firebase/messaging": "^23.4.0",
+    "@react-native-google-signin/google-signin": "^16.0.0",
     "axios": "^1.9.0",
     "crypto-js": "^4.2.0",
     "firebase": "^12.4.0",

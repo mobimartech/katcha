@@ -13,6 +13,7 @@ import {
   Animated,
   Dimensions,
   Platform,
+  Linking,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
@@ -23,7 +24,6 @@ import variables from '../../../constants/variables.js';
 
 const { width, height } = Dimensions.get('window');
 
-// Default packages if RevenueCat fails to load
 const DEFAULT_PACKAGES = {
   weekly: {
     price: '$4.99',
@@ -44,12 +44,11 @@ export default function SubscriptionScreen(): React.ReactElement {
     'weekly'
   );
   const [loading, setLoading] = useState(false);
-  const [restoring, setRestoring] = useState(false); // New state for restore
+  const [restoring, setRestoring] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
   const [useDefaultPackages, setUseDefaultPackages] = useState(false);
 
-  // Animation
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -191,7 +190,7 @@ export default function SubscriptionScreen(): React.ReactElement {
     }
 
     try {
-      setRestoring(true); // Show loader
+      setRestoring(true);
 
       const customerInfo = await Purchases.restorePurchases();
       const premium =
@@ -207,8 +206,22 @@ export default function SubscriptionScreen(): React.ReactElement {
       console.error('❌ Restore failed:', error);
       Alert.alert('Restore Failed', 'Unable to restore purchases.');
     } finally {
-      setRestoring(false); // Hide loader
+      setRestoring(false);
     }
+  };
+
+  const handlePrivacyPolicy = () => {
+    const privacyUrl = variables.APP.PRIVACY_URL; // Replace with your actual privacy policy URL
+    Linking.openURL(privacyUrl).catch((err) =>
+      console.error('Failed to open privacy policy:', err)
+    );
+  };
+
+  const handleTermsOfService = () => {
+    const termsUrl = variables.APP.TERMS_URL; // Replace with your actual terms URL
+    Linking.openURL(termsUrl).catch((err) =>
+      console.error('Failed to open terms:', err)
+    );
   };
 
   const weeklyPackage = getPackageByType('weekly');
@@ -236,301 +249,249 @@ export default function SubscriptionScreen(): React.ReactElement {
     return DEFAULT_PACKAGES.yearly.description;
   };
 
-  const features = [
-    'Real-time follower updates',
-    'Advanced analytics & insights',
-    'Unlimited account tracking',
-    'Smart notifications & trends',
-    'Priority data refresh',
-  ];
-
   if (loadingProducts) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.primary }]}>
-        <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <LinearGradient
+        colors={['#5B68E8', '#7B5FD8', '#A855F7']}
+        style={styles.container}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#5B68E8" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#FFF" />
           <Text style={styles.loadingText}>Loading subscriptions...</Text>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.primary }]}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+    <LinearGradient
+      colors={['#5B68E8', '#7B5FD8', '#A855F7']}
+      style={styles.container}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="#5B68E8" />
 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Animated.View
-          style={[
-            styles.header,
-            { backgroundColor: colors.primary },
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <SafeAreaView>
-            <View style={styles.headerRow}>
-              <View style={styles.brandRow}>
-                <View style={styles.logoBox}>
-                  <Image
-                    source={require('../../../assets/img/logomain.jpg')}
-                    style={styles.logoImage}
-                    resizeMode="contain"
-                  />
-                </View>
-                <Text style={styles.brandText}>{variables.APP.app_name}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.bell}
-                onPress={() => (navigation as any).navigate('MainTabs', {})}
-              >
-                <Icon name="home-outline" size={22} color="#000" />
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </Animated.View>
-
-        {/* Premium Card */}
-        <Animated.View
-          style={[
-            styles.premiumCard,
-            { backgroundColor: colors.surface },
-            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
-          ]}
-        >
-          <Text style={[styles.premiumTitle, { color: colors.text }]}>
-            Katcha Premium
-          </Text>
-          <Text
-            style={[styles.premiumSubtitle, { color: colors.textSecondary }]}
+        <SafeAreaView style={styles.safeArea}>
+          <Animated.View
+            style={[
+              styles.contentWrapper,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
           >
-            Track deeper. Grow faster. Stay ahead.
-          </Text>
-
-          {/* Offline/Default Mode Indicator */}
-          {useDefaultPackages && (
-            <View style={styles.offlineNotice}>
-              <Icon name="cloud-offline-outline" size={16} color="#FF9500" />
-              <Text style={styles.offlineText}>
-                Displaying preview pricing. Connect to purchase.
-              </Text>
-            </View>
-          )}
-
-          {/* Features Section */}
-          <Text style={[styles.featuresTitle, { color: colors.text }]}>
-            Unlock all features:
-          </Text>
-          <View style={styles.featuresList}>
-            {features.map((feature, index) => (
-              <View key={index} style={styles.featureItem}>
-                <Icon name="checkmark" size={20} color={colors.primary} />
-                <Text style={[styles.featureText, { color: colors.text }]}>
-                  {feature}
-                </Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Plan Selection */}
-          <Text style={[styles.planTitle, { color: colors.text }]}>
-            Select your plan:
-          </Text>
-
-          <View style={styles.plansContainer}>
-            {/* Weekly Plan */}
-            <View style={styles.planWrapper}>
-              <TouchableOpacity
-                onPress={() => setSelectedPlan('weekly')}
-                activeOpacity={0.8}
-                disabled={useDefaultPackages}
-              >
-                {selectedPlan === 'weekly' ? (
-                  <LinearGradient
-                    colors={
-                      useDefaultPackages
-                        ? ['#9CA3AF', '#6B7280']
-                        : ['#688dff', '#dc80ff']
-                    }
-                    style={styles.planCard}
-                    start={{ x: 0.5, y: 0 }}
-                    end={{ x: 0.5, y: 1 }}
-                  >
-                    <Text style={styles.planLabelSelected}>Weekly</Text>
-                    <Text style={styles.planPriceSelected}>
-                      {getWeeklyPrice()}
-                    </Text>
-                    <Text style={styles.planDescSelected}>
-                      {getWeeklyDescription()}
-                    </Text>
-                  </LinearGradient>
-                ) : (
-                  <View
-                    style={[
-                      styles.planCard,
-                      styles.planCardUnselected,
-                      { backgroundColor: colors.background },
-                      useDefaultPackages && { opacity: 0.6 },
-                    ]}
-                  >
-                    <Text style={[styles.planLabel, { color: colors.text }]}>
-                      Weekly
-                    </Text>
-                    <Text style={[styles.planPrice, { color: colors.text }]}>
-                      {getWeeklyPrice()}
-                    </Text>
-                    <Text
-                      style={[styles.planDesc, { color: colors.textSecondary }]}
-                    >
-                      {getWeeklyDescription()}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* Yearly Plan */}
-            <View style={styles.planWrapper}>
-              <TouchableOpacity
-                onPress={() => setSelectedPlan('yearly')}
-                activeOpacity={0.8}
-                disabled={useDefaultPackages}
-                style={styles.planTouchable}
-              >
-                {selectedPlan === 'yearly' ? (
-                  <LinearGradient
-                    colors={
-                      useDefaultPackages
-                        ? ['#9CA3AF', '#6B7280']
-                        : ['#688dff', '#dc80ff']
-                    }
-                    style={styles.planCard}
-                    start={{ x: 0.5, y: 0 }}
-                    end={{ x: 0.5, y: 1 }}
-                  >
-                    <Text style={styles.planLabelSelected}>Yearly</Text>
-                    <Text style={styles.planPriceSelected}>
-                      {getYearlyPrice()}
-                    </Text>
-                    <Text style={styles.planDescSelected}>
-                      {getYearlyDescription()}
-                    </Text>
-                  </LinearGradient>
-                ) : (
-                  <View
-                    style={[
-                      styles.planCard,
-                      styles.planCardUnselected,
-                      { backgroundColor: colors.background },
-                      useDefaultPackages && { opacity: 0.6 },
-                    ]}
-                  >
-                    <Text style={[styles.planLabel, { color: colors.text }]}>
-                      Yearly
-                    </Text>
-                    <Text style={[styles.planPrice, { color: colors.text }]}>
-                      {getYearlyPrice()}
-                    </Text>
-                    <Text
-                      style={[styles.planDesc, { color: colors.textSecondary }]}
-                    >
-                      {getYearlyDescription()}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            onPress={handlePurchase}
-            disabled={loading || isPremium || useDefaultPackages}
-            activeOpacity={0.8}
-            style={styles.submitWrapper}
-          >
-            <LinearGradient
-              colors={
-                useDefaultPackages || isPremium
-                  ? ['#9CA3AF', '#6B7280']
-                  : ['#7b86ff', '#3c9eff']
-              }
-              style={styles.submitButton}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              {loading ? (
-                <ActivityIndicator color="#FFF" size="small" />
-              ) : (
-                <Text style={styles.submitButtonText}>
-                  {isPremium
-                    ? 'Already Premium ✓'
-                    : useDefaultPackages
-                    ? 'Service Unavailable'
-                    : 'Submit'}
-                </Text>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Restore Button with Loader */}
-          {!isPremium && (
+            {/* Close Button */}
             <TouchableOpacity
-              style={styles.restoreButton}
-              onPress={handleRestore}
-              disabled={useDefaultPackages || restoring}
-              activeOpacity={0.7}
+              style={styles.closeButton}
+              onPress={() => (navigation as any).navigate('MainTabs', {})}
             >
-              {restoring ? (
-                <View style={styles.restoreLoaderContainer}>
-                  <ActivityIndicator color={colors.primary} size="small" />
-                  <Text
+              <Icon name="close" size={24} color="#FFF" />
+            </TouchableOpacity>
+
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <View style={styles.logoWrapper}>
+                <Image
+                  source={require('../../../assets/img/logo.jpg')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+              </View>
+            </View>
+
+            {/* Main Headline */}
+            <Text style={styles.mainTitle}>Unlock Premium Power</Text>
+            <Text style={styles.mainSubtitle}>
+              Unlimited tracking & advanced insights
+            </Text>
+
+            {/* Quick Benefits Icons */}
+            <View style={styles.benefitsContainer}>
+              <View style={styles.benefitBadge}>
+                <Icon name="infinite" size={20} color="#FFF" />
+                <Text style={styles.benefitLabel}>Unlimited</Text>
+              </View>
+              <View style={styles.benefitBadge}>
+                <Icon name="trending-up" size={20} color="#FFF" />
+                <Text style={styles.benefitLabel}>Analytics</Text>
+              </View>
+              <View style={styles.benefitBadge}>
+                <Icon name="flash" size={20} color="#FFF" />
+                <Text style={styles.benefitLabel}>Real-time</Text>
+              </View>
+            </View>
+
+            {/* Offline Notice */}
+            {useDefaultPackages && (
+              <View style={styles.offlineNotice}>
+                <Icon name="cloud-offline-outline" size={16} color="#FF9500" />
+                <Text style={styles.offlineText}>
+                  Preview mode - Connect to purchase
+                </Text>
+              </View>
+            )}
+
+            {/* Plans Section */}
+            <View style={styles.plansSection}>
+              <Text style={styles.planSectionTitle}>Choose Your Plan</Text>
+
+              <View style={styles.plansContainer}>
+                {/* Weekly Plan */}
+                <TouchableOpacity
+                  style={styles.planWrapper}
+                  onPress={() => setSelectedPlan('weekly')}
+                  activeOpacity={0.8}
+                  disabled={useDefaultPackages}
+                >
+                  <View
                     style={[
-                      styles.restoreButtonText,
-                      { color: colors.primary, marginLeft: 8 },
+                      styles.planCard,
+                      selectedPlan === 'weekly' && styles.planCardSelected,
+                      useDefaultPackages && styles.planCardDisabled,
                     ]}
                   >
-                    Restoring...
-                  </Text>
-                </View>
-              ) : (
-                <Text
-                  style={[
-                    styles.restoreButtonText,
-                    { color: colors.primary },
-                    useDefaultPackages && { opacity: 0.5 },
-                  ]}
-                >
-                  Restore Purchases
-                </Text>
-              )}
-            </TouchableOpacity>
-          )}
+                    {selectedPlan === 'weekly' && (
+                      <View style={styles.selectedBadge}>
+                        <Icon name="checkmark-circle" size={20} color="#FFF" />
+                      </View>
+                    )}
+                    {/* Empty space to match yearly plan height */}
+                    <View style={styles.badgePlaceholder} />
+                    <Text style={styles.planLabel}>Weekly</Text>
+                    <Text style={styles.planPrice}>{getWeeklyPrice()}</Text>
+                    <Text style={styles.planDescription}>
+                      {getWeeklyDescription()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
 
-          {/* Premium Status Badge */}
-          {isPremium && (
-            <View
-              style={[
-                styles.premiumBadge,
-                { backgroundColor: colors.primary + '15' },
-              ]}
-            >
-              <Icon name="checkmark-circle" size={18} color={colors.primary} />
-              <Text
-                style={[styles.premiumBadgeText, { color: colors.primary }]}
-              >
-                You have Premium Access
-              </Text>
+                {/* Yearly Plan */}
+                <TouchableOpacity
+                  style={styles.planWrapper}
+                  onPress={() => setSelectedPlan('yearly')}
+                  activeOpacity={0.8}
+                  disabled={useDefaultPackages}
+                >
+                  <View
+                    style={[
+                      styles.planCard,
+                      selectedPlan === 'yearly' && styles.planCardSelected,
+                      useDefaultPackages && styles.planCardDisabled,
+                    ]}
+                  >
+                    {selectedPlan === 'yearly' && (
+                      <View style={styles.selectedBadge}>
+                        <Icon name="checkmark-circle" size={20} color="#FFF" />
+                      </View>
+                    )}
+                    <View style={styles.popularBadge}>
+                      <Text style={styles.popularText}>POPULAR</Text>
+                    </View>
+                    <Text style={styles.planLabel}>Yearly</Text>
+                    <Text style={styles.planPrice}>{getYearlyPrice()}</Text>
+                    <Text style={styles.planDescription}>
+                      {getYearlyDescription()}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
-          )}
-        </Animated.View>
+
+            {/* Continue Button */}
+            <TouchableOpacity
+              onPress={handlePurchase}
+              disabled={loading || isPremium || useDefaultPackages}
+              activeOpacity={0.8}
+              style={styles.subscribeButtonWrapper}
+            >
+              <View
+                style={[
+                  styles.subscribeButton,
+                  (useDefaultPackages || isPremium) &&
+                    styles.subscribeButtonDisabled,
+                ]}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#5B68E8" size="small" />
+                ) : (
+                  <Text style={styles.subscribeButtonText}>
+                    {isPremium
+                      ? 'Already Premium ✓'
+                      : useDefaultPackages
+                      ? 'Service Unavailable'
+                      : 'Continue'}
+                  </Text>
+                )}
+              </View>
+            </TouchableOpacity>
+
+            {/* Footer Links Row: Privacy | Restore | Terms */}
+            {!isPremium && (
+              <View style={styles.footerLinksRow}>
+                <TouchableOpacity
+                  style={styles.footerLink}
+                  onPress={handlePrivacyPolicy}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.footerLinkText}>Privacy</Text>
+                </TouchableOpacity>
+
+                <View style={styles.footerDivider} />
+
+                <TouchableOpacity
+                  style={styles.footerLink}
+                  onPress={handleRestore}
+                  disabled={useDefaultPackages || restoring}
+                  activeOpacity={0.7}
+                >
+                  {restoring ? (
+                    <View style={styles.restoreLoaderContainer}>
+                      <ActivityIndicator color="#FFF" size="small" />
+                    </View>
+                  ) : (
+                    <Text
+                      style={[
+                        styles.footerLinkText,
+                        useDefaultPackages && { opacity: 0.5 },
+                      ]}
+                    >
+                      Restore
+                    </Text>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.footerDivider} />
+
+                <TouchableOpacity
+                  style={styles.footerLink}
+                  onPress={handleTermsOfService}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.footerLinkText}>Terms</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Premium Badge */}
+            {isPremium && (
+              <View style={styles.premiumBadge}>
+                <Icon name="checkmark-circle" size={20} color="#FFF" />
+                <Text style={styles.premiumBadgeText}>
+                  You have Premium Access
+                </Text>
+              </View>
+            )}
+          </Animated.View>
+        </SafeAreaView>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -545,6 +506,13 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 40,
   },
+  safeArea: {
+    flex: 1,
+  },
+  contentWrapper: {
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'android' ? 20 : 10,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -556,80 +524,82 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontWeight: '600',
   },
-  header: {
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
-    paddingBottom: 24,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-  },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoBox: {
-    backgroundColor: '#FFF',
+  closeButton: {
+    alignSelf: 'flex-end',
     width: 40,
     height: 40,
-    borderRadius: 8,
-    marginRight: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 6,
-  },
-  logoImage: {
-    borderRadius: 8,
-    width: 40,
-    height: 40,
-  },
-  brandText: {
-    color: '#FFF',
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  bell: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFF',
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  premiumCard: {
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
-    minHeight: height - 100,
-  },
-  premiumTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  premiumSubtitle: {
-    fontSize: 16,
     marginBottom: 24,
-    lineHeight: 22,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 24,
+    backgroundColor: '#FFF',
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
+  },
+  mainTitle: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  mainSubtitle: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 26,
+    fontWeight: '500',
+  },
+  benefitsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: 40,
+  },
+  benefitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+  },
+  benefitLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFF',
   },
   offlineNotice: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: '#FFF3E0',
-    borderRadius: 8,
-    marginBottom: 20,
+    borderRadius: 12,
+    marginBottom: 24,
   },
   offlineText: {
     fontSize: 13,
@@ -637,132 +607,152 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontWeight: '600',
   },
-  featuresTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  featuresList: {
+  plansSection: {
     marginBottom: 32,
   },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  featureText: {
-    fontSize: 16,
-    marginLeft: 12,
-    flex: 1,
-  },
-  planTitle: {
-    fontSize: 18,
+  planSectionTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: 16,
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 20,
   },
   plansContainer: {
     flexDirection: 'row',
-    marginBottom: 32,
     gap: 16,
   },
   planWrapper: {
     flex: 1,
   },
-  planTouchable: {
-    width: '100%',
-  },
   planCard: {
-    width: '100%',
-    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 20,
+    padding: 20,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    height: 200,
     justifyContent: 'center',
-    minHeight: 170,
+    position: 'relative',
   },
-  planCardUnselected: {
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+  planCardSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: '#FFF',
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  planCardDisabled: {
+    opacity: 0.6,
+  },
+  selectedBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+  },
+  badgePlaceholder: {
+    height: 20,
+    marginBottom: 8,
+  },
+  popularBadge: {
+    position: 'absolute',
+    top: -8,
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  popularText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#5B68E8',
+    letterSpacing: 0.5,
   },
   planLabel: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  planLabelSelected: {
-    fontSize: 17,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 12,
   },
   planPrice: {
-    fontSize: 40,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '500',
+    color: '#FFF',
     marginBottom: 8,
     letterSpacing: -1,
   },
-  planPriceSelected: {
-    fontSize: 40,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#FFFFFF',
-    letterSpacing: -1,
-  },
-  planDesc: {
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  planDescSelected: {
-    fontSize: 13,
-    textAlign: 'center',
+  planDescription: {
+    fontSize: 14,
     color: 'rgba(255, 255, 255, 0.9)',
-    lineHeight: 18,
+    textAlign: 'center',
+    fontWeight: '600',
   },
-  submitWrapper: {
-    marginBottom: 16,
+  subscribeButtonWrapper: {
+    marginBottom: 20,
   },
-  submitButton: {
-    width: '100%',
-    height: 56,
+  subscribeButton: {
+    backgroundColor: '#FFF',
+    height: 60,
     borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#7b86ff',
-    shadowOffset: { width: 0, height: 6 },
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  submitButtonText: {
-    color: '#FFF',
+  subscribeButtonDisabled: {
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    shadowOpacity: 0.1,
+  },
+  subscribeButtonText: {
+    color: '#5B68E8',
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  restoreButton: {
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  restoreButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  restoreLoaderContainer: {
+  footerLinksRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  footerLink: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  footerLinkText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  footerDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  restoreLoaderContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 50,
   },
   premiumBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 16,
     marginTop: 8,
   },
   premiumBadgeText: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 8,
+    color: '#FFF',
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Alert,
   Image,
@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAppTheme } from '../../theme/ThemeProvider';
@@ -22,6 +23,10 @@ import { initializeBackgroundFetch } from '../../services/BackgroundFetchService
 import { getDeviceId } from '../../utils/storage';
 import { googleLogin } from '../../api/auth';
 import { auth } from '../../firebase';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -32,6 +37,32 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
+
+  const configureGoogleSignIn = () => {
+    try {
+      GoogleSignin.configure({
+        // Get this from Firebase Console > Project Settings > Web Client ID
+        webClientId:
+          '691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com',
+        //691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com
+        // Get this from GoogleService-Info.plist CLIENT_ID field
+        iosClientId:
+          '691913957787-tukkgqds27jc2qiuc9d9c0mojuibm7bt.apps.googleusercontent.com',
+
+        offlineAccess: true,
+        hostedDomain: '',
+        forceCodeForRefreshToken: true,
+      });
+      console.log('[GoogleSignIn] Configuration successful');
+    } catch (error) {
+      console.error('[GoogleSignIn] Configuration error:', error);
+    }
+  };
 
   const onLogin = async () => {
     if (!email || !password) {
@@ -100,6 +131,104 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
     }
   };
 
+  const onGoogleLogin = async () => {
+    setGoogleLoading(true);
+    try {
+      console.log('[GoogleLogin] Step 1: Checking Google Play Services');
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+
+      console.log('[GoogleLogin] Step 2: Initiating Google Sign-In');
+      const signInResponse = await GoogleSignin.signIn();
+
+      console.log('[GoogleLogin] Step 3: Google Sign-In successful');
+      console.log('[GoogleLogin] Response:', signInResponse);
+
+      // Get user data from response
+      const userData =
+        'data' in signInResponse ? signInResponse.data : signInResponse;
+
+      // Get tokens
+      const tokens = await GoogleSignin.getTokens();
+      const idToken = tokens.idToken;
+
+      if (!idToken) {
+        throw new Error('No ID token received from Google');
+      }
+
+      console.log('[GoogleLogin] Step 4: Got ID token');
+
+      // Extract user info
+      const userEmail = userData?.user?.email || '';
+      const userName =
+        userData?.user?.name || userData?.user?.givenName || 'User';
+
+      console.log('[GoogleLogin] Step 5: Creating Firebase credential');
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+
+      console.log('[GoogleLogin] Step 6: Signing in to Firebase');
+      const firebaseUserCredential = await auth().signInWithCredential(
+        googleCredential
+      );
+
+      const firebaseUser = firebaseUserCredential.user;
+      console.log('[GoogleLogin] Step 7: Firebase login successful');
+      console.log('[GoogleLogin] Firebase UID:', firebaseUser.uid);
+
+      const deviceId = await getDeviceId();
+      console.log('[GoogleLogin] Step 8: Device ID:', deviceId);
+
+      console.log('[GoogleLogin] Step 9: Calling backend googleLogin...');
+      const backendPayload = {
+        action: 'google_login' as const,
+        google_id: firebaseUser.uid,
+        email: firebaseUser.email || userEmail,
+        name: firebaseUser.displayName || userName,
+        device_id: deviceId,
+        firebaseID: firebaseUser.uid,
+      };
+
+      console.log(
+        '[GoogleLogin] Backend payload:',
+        JSON.stringify(backendPayload, null, 2)
+      );
+
+      const authTokens = await googleLogin(backendPayload);
+      console.log('[GoogleLogin] Step 10: Backend authentication successful');
+
+      await setIsLoggedIn(true);
+      await initializeBackgroundFetch();
+      void registerForPushNotifications();
+
+      console.log('[GoogleLogin] Step 11: Navigation to MainTabs');
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    } catch (error: any) {
+      console.error('[GoogleLogin] Full Error:', error);
+
+      let errorMessage = 'Google Sign-In failed';
+
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        errorMessage = 'Sign-In cancelled';
+        console.log('[GoogleLogin] User cancelled sign-in');
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        errorMessage = 'Sign-In already in progress';
+        console.log('[GoogleLogin] Sign-in already in progress');
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        errorMessage = 'Google Play Services not available';
+        console.error('[GoogleLogin] Play services not available');
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
+        Alert.alert('Google Sign-In Failed', errorMessage);
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <LinearGradient colors={['#658EFF', '#B27FFF']} style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -159,7 +288,7 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
                     onPress={() => setShowPassword(!showPassword)}
                   >
                     <Text style={styles.eyeIconText}>
-                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                      {showPassword ? '👁' : '👁‍🗨'}
                     </Text>
                   </Pressable>
                 </View>
@@ -200,6 +329,37 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
                     {loading ? 'Logging in...' : 'Log In'}
                   </Text>
                 </LinearGradient>
+              </Pressable>
+
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Google Sign-In Button */}
+              <Pressable
+                style={styles.googleButtonContainer}
+                onPress={onGoogleLogin}
+                disabled={googleLoading}
+              >
+                <View style={styles.googleButton}>
+                  {googleLoading ? (
+                    <ActivityIndicator color="#4285F4" size="small" />
+                  ) : (
+                    <>
+                      <Image
+                        source={require('../../../assets/img/google.png')}
+                        style={styles.googleIcon}
+                        resizeMode="contain"
+                      />
+                      <Text style={styles.googleButtonText}>
+                        Continue with Google
+                      </Text>
+                    </>
+                  )}
+                </View>
               </Pressable>
             </View>
 
@@ -336,6 +496,53 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '600',
+  },
+  googleButtonContainer: {
+    borderRadius: 50,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000', // Official Google Blue (Dark theme)
+    height: 56,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+  },
+  googleIcon: {
+    width: 30,
+    height: 30,
+    marginRight: 12,
+    // backgroundColor: '#FFFFFF', // White background for the G logo
+    borderRadius: 2,
+    padding: 2,
+  },
+  googleButtonText: {
+    color: '#FFFFFF', // White text for dark button
+    fontSize: 16,
+    fontWeight: '600',
+  },
+
   signUpContainer: {
     alignItems: 'center',
     marginTop: 24,

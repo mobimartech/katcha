@@ -2894,6 +2894,11 @@
   resolved "https://registry.yarnpkg.com/@react-native-firebase/remote-config/-/remote-config-22.4.0.tgz#73f8562c712c0328ae28fe42525dd7b26f361b75"
   integrity sha512-uisPD4ACE1PDGtAzQMmlPLg08jozT7PI2ddVLUJke499Fne9wc9f3edRqi+7afdMfXf7P70IxA3rR0iE9wagsQ==
 
+"@react-native-google-signin/google-signin@^16.0.0":
+  version "16.0.0"
+  resolved "https://registry.yarnpkg.com/@react-native-google-signin/google-signin/-/google-signin-16.0.0.tgz#05af652e16f7dab745907db06edc74c007c0e670"
+  integrity sha512-jVuzPo8odREekFc0b4RK3YsqCvedtLIM2P6NSszFr9cYyhKrUNikffPapL6LmkL9qkb8K6pDeb5CXg4qALOc0g==
+
 "@react-native/assets-registry@0.79.3":
   version "0.79.3"
   resolved "https://registry.yarnpkg.com/@react-native/assets-registry/-/assets-registry-0.79.3.tgz#022218d55a5d9d221a6d176987ab0b35c10d388b"

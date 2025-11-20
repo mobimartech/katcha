@@ -118,6 +118,19 @@
 	<false/>
 	<key>aps-environment</key>
 	<string>production</string>
+	<key>CFBundleURLTypes</key>
+<array>
+  <dict>
+    <key>CFBundleTypeRole</key>
+    <string>Editor</string>
+    <key>CFBundleURLSchemes</key>
+    <array>
+      <!-- This is your REVERSED_CLIENT_ID from GoogleService-Info.plist -->
+      <string>com.googleusercontent.apps.691913957787-tukkgqds27jc2qiuc9d9c0mojuibm7bt</string>
+    </array>
+  </dict>
+</array>
+
 	<!-- <key>google_mobile_ads_json_raw</key>
 	<string>uiJpb3NfYXBwX2lkIjogImNhLWFwcC1wdWItMzE0NDE2OTkwODY5MDAyMH43NTE4NjE3MTU4IiwgImFuZHJvaWRfYXBwX2lkIjogImNhLWFwcC1wdWItMzE0NDE2OTkwODY5MDAyMH43NTE4NjE3MTU4In0=</string> -->
 </dict>
