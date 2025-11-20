@@ -219,14 +219,23 @@ export default function ProfileScreen({
             <View
               style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
             >
-              <Image
-                source={
-                  avatarSource.uri
-                    ? avatarSource
-                    : require('../../../assets/img/icon.png')
-                }
-                style={[styles.avatarImg]}
-              />
+              <View
+                style={[
+                  styles.avatarImg,
+                  {
+                    backgroundColor: colors.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  },
+                ]}
+              >
+                <Text
+                  style={{ color: '#FFFFFF', fontSize: 20, fontWeight: '700' }}
+                >
+                  {name.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+
               <View style={{ marginLeft: 12, flex: 1 }}>
                 <Text
                   style={[styles.itemTitle, { color: colors.text }]}
