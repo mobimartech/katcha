@@ -22,6 +22,8 @@ import { registerForPushNotifications } from '../../notifications/messaging';
 import { initializeBackgroundFetch } from '../../services/BackgroundFetchService';
 import { getDeviceId } from '../../utils/storage';
 import { googleLogin } from '../../api/auth';
+import Icon from 'react-native-vector-icons/Ionicons';
+
 import { auth } from '../../firebase';
 import {
   GoogleSignin,
@@ -130,7 +132,7 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       setLoading(false);
     }
   };
-  
+
   const onGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
@@ -306,9 +308,11 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
                     style={styles.eyeIcon}
                     onPress={() => setShowPassword(!showPassword)}
                   >
-                    <Text style={styles.eyeIconText}>
-                      {showPassword ? '👁' : '👁‍🗨'}
-                    </Text>
+                    <Icon
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color="#666"
+                    />
                   </Pressable>
                 </View>
               </View>
@@ -417,8 +421,8 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   logo: {
-    width: 200,
-    height: 200,
+    width: 150,
+    height: 150,
   },
   card: {
     backgroundColor: '#FFFFFF',
