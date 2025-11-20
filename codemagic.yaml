@@ -1,0 +1,57 @@
+workflows:
+  expo-ios-workflow:
+    name: Expo iOS Workflow
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: katcha key
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.mni.katcha.social.follower.tracker
+      vars:
+        BUNDLE_ID: 'com.mni.katcha.social.follower.tracker'
+        XCODE_WORKSPACE: 'MyMNIProject'
+        XCODE_SCHEME: 'MyMNIProject'
+      node: latest
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install yarn dependencies
+        script: |
+          yarn install
+
+      - name: Install Expo CLI
+        script: |
+          npm install -g expo-cli
+
+      - name: Prebuild iOS native code
+        script: |
+          npx expo prebuild --platform ios
+
+      - name: Install CocoaPods dependencies
+        script: |
+          cd ios && pod install && cd ..
+
+      - name: Set up code signing settings on Xcode project
+        script: |
+          xcode-project use-profiles --warn-only
+
+      - name: Build ipa for distribution
+        script: |
+          xcode-project build-ipa \
+            --workspace ios/$XCODE_WORKSPACE.xcworkspace \
+            --scheme $XCODE_SCHEME
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - 20shamo25@gmail.com
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
