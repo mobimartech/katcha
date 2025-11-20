@@ -29,17 +29,17 @@ workflows:
         script: |
           xcode-project use-profiles
 
+      - name: remove all node modules
+        script: |
+          rm -rf node_modules yarn.lock
+
+      - name: remove all pods
+        script: |
+          rm -rf ios/Pods ios/Podfile.lock
+
       - name: Install yarn dependencies
         script: |
           yarn install
-
-      - name: Install Expo CLI
-        script: |
-          npm install -g expo-cli
-
-      - name: Prebuild iOS native code
-        script: |
-          npx expo prebuild --platform ios
 
       - name: Install CocoaPods dependencies
         script: |
