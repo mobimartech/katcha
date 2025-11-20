@@ -45,7 +45,7 @@
 			</dict>
 		</dict>
 	</dict>
-	<!-- <key>NSCameraUsageDescription</key>
+	<key>NSCameraUsageDescription</key>
 	<string>Katcha needs camera access to take photos for background removal and editing.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Katcha may use your location to optimize AI processing and provide region-specific features.</string>
@@ -54,7 +54,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Katcha needs photo library access to save your processed images after background removal.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Katcha needs photo library access to select images for background removal and editing.</string> -->
+	<string>Katcha needs photo library access to select images for background removal and editing.</string>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>
@@ -70,8 +70,8 @@
 	<string>Katcha may use speech recognition if needed for accessibility features, but does not record or store any spoken data.</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Social Tracker needs notification permission to alert you about follower changes and account updates.</string>
-	<!-- <key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
-	<true/> -->
+	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
+	<true/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AntDesign.ttf</string>
