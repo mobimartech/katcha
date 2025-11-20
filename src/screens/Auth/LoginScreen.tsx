@@ -130,7 +130,7 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       setLoading(false);
     }
   };
-
+  
   const onGoogleLogin = async () => {
     setGoogleLoading(true);
     try {
@@ -142,12 +142,24 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       console.log('[GoogleLogin] Step 2: Initiating Google Sign-In');
       const signInResponse = await GoogleSignin.signIn();
 
+      // **FIX: Check if sign-in was actually completed**
+      if (!signInResponse) {
+        console.log('[GoogleLogin] Sign-in cancelled - no response');
+        return; // Early return on cancel
+      }
+
       console.log('[GoogleLogin] Step 3: Google Sign-In successful');
       console.log('[GoogleLogin] Response:', signInResponse);
 
       // Get user data from response
       const userData =
         'data' in signInResponse ? signInResponse.data : signInResponse;
+
+      // **FIX: Validate user data exists**
+      if (!userData || !userData.user) {
+        console.log('[GoogleLogin] Sign-in cancelled - no user data');
+        return; // Early return if no user data
+      }
 
       // Get tokens
       const tokens = await GoogleSignin.getTokens();
@@ -163,6 +175,12 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       const userEmail = userData?.user?.email || '';
       const userName =
         userData?.user?.name || userData?.user?.givenName || 'User';
+
+      // **FIX: Validate email exists**
+      if (!userEmail) {
+        console.log('[GoogleLogin] Sign-in cancelled - no email');
+        return; // Early return if no email
+      }
 
       console.log('[GoogleLogin] Step 5: Creating Firebase credential');
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
@@ -206,12 +224,15 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
     } catch (error: any) {
       console.error('[GoogleLogin] Full Error:', error);
 
+      // **FIX: Handle cancellation silently**
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        console.log('[GoogleLogin] User cancelled sign-in');
+        return; // Just return, don't show error
+      }
+
       let errorMessage = 'Google Sign-In failed';
 
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        errorMessage = 'Sign-In cancelled';
-        console.log('[GoogleLogin] User cancelled sign-in');
-      } else if (error.code === statusCodes.IN_PROGRESS) {
+      if (error.code === statusCodes.IN_PROGRESS) {
         errorMessage = 'Sign-In already in progress';
         console.log('[GoogleLogin] Sign-in already in progress');
       } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
@@ -221,9 +242,7 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
         errorMessage = error.message;
       }
 
-      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
-        Alert.alert('Google Sign-In Failed', errorMessage);
-      }
+      Alert.alert('Google Sign-In Failed', errorMessage);
     } finally {
       setGoogleLoading(false);
     }
