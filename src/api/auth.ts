@@ -1,4 +1,9 @@
-import { getApiCredentials, getBaseUrl, getRefreshToken, setTokens } from '../utils/storage.ts';
+import {
+  getApiCredentials,
+  getBaseUrl,
+  getRefreshToken,
+  setTokens,
+} from '../utils/storage.ts';
 import { generateSignature3 } from '../utils/signature.ts';
 import { setUser } from '../utils/storage.ts';
 
@@ -29,7 +34,7 @@ const makeFetchRequest = async (
   url: string,
   headers: any,
   method: string = 'POST',
-  body?: string,
+  body?: string
 ): Promise<any> => {
   try {
     console.log('Making fetch request to:', url);
@@ -52,10 +57,14 @@ const makeFetchRequest = async (
 
     // If unauthorized, attempt one refresh + retry
     if (response.status === 401) {
-      console.log('[Auth][makeFetchRequest] 401 received, attempting token refresh...');
+      console.log(
+        '[Auth][makeFetchRequest] 401 received, attempting token refresh...'
+      );
       const refreshed = await refreshAccessTokenIfPossible();
       if (refreshed) {
-        console.log('[Auth][makeFetchRequest] Refresh success, retrying request...');
+        console.log(
+          '[Auth][makeFetchRequest] Refresh success, retrying request...'
+        );
         response = await doRequest();
         console.log('Retry Response Status:', response.status);
       } else {
@@ -63,7 +72,9 @@ const makeFetchRequest = async (
       }
     }
 
-    const finalText = response.ok ? await (async () => responseText)() : responseText;
+    const finalText = response.ok
+      ? await (async () => responseText)()
+      : responseText;
     try {
       const parsedData = JSON.parse(finalText);
       return { status: response.status, data: parsedData };
@@ -77,20 +88,26 @@ const makeFetchRequest = async (
   }
 };
 
-export async function googleLogin(payload: GoogleLoginPayload): Promise<AuthTokens> {
+export async function googleLogin(
+  payload: GoogleLoginPayload
+): Promise<AuthTokens> {
   try {
     console.log('[Auth][GoogleLogin][Request] Starting...');
-    
-    const baseUrl = (await getBaseUrl()) || 'https://social-tracker.automasterpro.net';
+
+    const baseUrl = (await getBaseUrl()) || 'https://katchaapp.org';
     const creds = await getApiCredentials();
-    
+
     if (!creds) {
       throw new Error('Missing API credentials');
     }
 
     const method = 'POST';
     const path = '/api/auth';
-    const { timestamp, signature, stringToSign } = generateSignature3(method, path, creds.apiSecret);
+    const { timestamp, signature, stringToSign } = generateSignature3(
+      method,
+      path,
+      creds.apiSecret
+    );
 
     const loginBody = JSON.stringify(payload);
 
@@ -102,10 +119,18 @@ export async function googleLogin(payload: GoogleLoginPayload): Promise<AuthToke
     };
 
     console.log('--- GOOGLE LOGIN REQUEST ---');
-    const result = await makeFetchRequest(`${baseUrl}${path}`, headers, method, loginBody);
+    const result = await makeFetchRequest(
+      `${baseUrl}${path}`,
+      headers,
+      method,
+      loginBody
+    );
 
     console.log('Google Login Result Status:', result.status);
-    console.log('Google Login Result Data:', JSON.stringify(result.data, null, 2));
+    console.log(
+      'Google Login Result Data:',
+      JSON.stringify(result.data, null, 2)
+    );
 
     if (result.status === 200 && result.data.success) {
       const data = result.data;
@@ -126,20 +151,26 @@ export async function googleLogin(payload: GoogleLoginPayload): Promise<AuthToke
   }
 }
 
-export async function appleLogin(payload: AppleLoginPayload): Promise<AuthTokens> {
+export async function appleLogin(
+  payload: AppleLoginPayload
+): Promise<AuthTokens> {
   try {
     console.log('[Auth][AppleLogin][Request] Starting...');
-    
-    const baseUrl = (await getBaseUrl()) || 'https://social-tracker.automasterpro.net';
+
+    const baseUrl = (await getBaseUrl()) || 'https://katchaapp.org';
     const creds = await getApiCredentials();
-    
+
     if (!creds) {
       throw new Error('Missing API credentials');
     }
 
     const method = 'POST';
     const path = '/api/auth';
-    const { timestamp, signature, stringToSign } = generateSignature3(method, path, creds.apiSecret);
+    const { timestamp, signature, stringToSign } = generateSignature3(
+      method,
+      path,
+      creds.apiSecret
+    );
 
     const loginBody = JSON.stringify(payload);
 
@@ -152,10 +183,18 @@ export async function appleLogin(payload: AppleLoginPayload): Promise<AuthTokens
 
     console.log('--- APPLE LOGIN REQUEST ---');
     console.log('Payload:', loginBody);
-    const result = await makeFetchRequest(`${baseUrl}${path}`, headers, method, loginBody);
+    const result = await makeFetchRequest(
+      `${baseUrl}${path}`,
+      headers,
+      method,
+      loginBody
+    );
 
     console.log('Apple Login Result Status:', result.status);
-    console.log('Apple Login Result Data:', JSON.stringify(result.data, null, 2));
+    console.log(
+      'Apple Login Result Data:',
+      JSON.stringify(result.data, null, 2)
+    );
 
     if (result.status === 200 && result.data.success) {
       const data = result.data;
@@ -179,17 +218,21 @@ export async function appleLogin(payload: AppleLoginPayload): Promise<AuthTokens
 export async function refreshToken(refresh_token: string): Promise<AuthTokens> {
   try {
     console.log('[Auth][RefreshToken][Request] Starting...');
-    
-    const baseUrl = (await getBaseUrl()) || 'https://social-tracker.automasterpro.net';
+
+    const baseUrl = (await getBaseUrl()) || 'https://katchaapp.org';
     const creds = await getApiCredentials();
-    
+
     if (!creds) {
       throw new Error('Missing API credentials');
     }
 
     const method = 'POST';
     const path = '/api/auth';
-    const { timestamp, signature, stringToSign } = generateSignature3(method, path, creds.apiSecret);
+    const { timestamp, signature, stringToSign } = generateSignature3(
+      method,
+      path,
+      creds.apiSecret
+    );
 
     const refreshBody = JSON.stringify({
       action: 'refresh_token',
@@ -204,16 +247,25 @@ export async function refreshToken(refresh_token: string): Promise<AuthTokens> {
     };
 
     console.log('--- REFRESH TOKEN REQUEST ---');
-    const result = await makeFetchRequest(`${baseUrl}${path}`, headers, method, refreshBody);
+    const result = await makeFetchRequest(
+      `${baseUrl}${path}`,
+      headers,
+      method,
+      refreshBody
+    );
 
     console.log('Refresh Token Result Status:', result.status);
-    console.log('Refresh Token Result Data:', JSON.stringify(result.data, null, 2));
+    console.log(
+      'Refresh Token Result Data:',
+      JSON.stringify(result.data, null, 2)
+    );
 
     if (result.status === 200 && result.data) {
       const data = result.data;
       if (data?.access_token || data?.tokens?.access_token) {
         const at = data?.access_token ?? data?.tokens?.access_token;
-        const rt = data?.refresh_token ?? data?.tokens?.refresh_token ?? refresh_token;
+        const rt =
+          data?.refresh_token ?? data?.tokens?.refresh_token ?? refresh_token;
         await setTokens(at, rt);
         console.log('[Auth] Refresh stored. access_len:', String(at)?.length);
         return { access_token: at, refresh_token: rt };
@@ -255,10 +307,12 @@ export async function refreshAccessTokenIfPossible(): Promise<boolean> {
   }
 }
 
-export async function deleteAccount(email: string): Promise<{ status: number; data: any }> {
+export async function deleteAccount(
+  email: string
+): Promise<{ status: number; data: any }> {
   try {
     console.log('[Auth][DeleteAccount][Request] Starting...');
-    const baseUrl = (await getBaseUrl()) || 'https://social-tracker.automasterpro.net';
+    const baseUrl = (await getBaseUrl()) || 'https://katchaapp.org';
     const creds = await getApiCredentials();
     if (!creds) {
       throw new Error('Missing API credentials');
@@ -266,7 +320,11 @@ export async function deleteAccount(email: string): Promise<{ status: number; da
 
     const method = 'POST';
     const path = '/api/auth';
-    const { timestamp, signature } = generateSignature3(method, path, creds.apiSecret);
+    const { timestamp, signature } = generateSignature3(
+      method,
+      path,
+      creds.apiSecret
+    );
     const body = JSON.stringify({ action: 'delete_account', email });
     const headers = {
       'Content-Type': 'application/json',
@@ -278,7 +336,11 @@ export async function deleteAccount(email: string): Promise<{ status: number; da
     const res = await fetch(`${baseUrl}${path}`, { method, headers, body });
     const text = await res.text();
     let data: any = null;
-    try { data = JSON.parse(text); } catch { data = text; }
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = text;
+    }
     console.log('[Auth][DeleteAccount][Response]', res.status, data);
     return { status: res.status, data };
   } catch (e) {
@@ -286,5 +348,3 @@ export async function deleteAccount(email: string): Promise<{ status: number; da
     throw e;
   }
 }
-
-

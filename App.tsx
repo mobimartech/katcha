@@ -17,7 +17,7 @@ export default function App(): React.ReactElement {
 
     // Initialize API config from provided Postman collection values for dev
     void (async () => {
-      await setBaseUrl('https://social-tracker.automasterpro.net');
+      await setBaseUrl('https://katchaapp.org');
       await setApiCredentials({
         apiKey:
           'd4f25ac2a42f35bf7a130dd3743f6e86b2b08f77d13edd116cfcaaadb81ab196',

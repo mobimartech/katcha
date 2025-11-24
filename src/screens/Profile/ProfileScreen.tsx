@@ -49,7 +49,7 @@ export default function ProfileScreen({
   const fetchSubscriptionVisibility = async () => {
     try {
       const response = await fetch(
-        'https://social-tracker.automasterpro.net/subscreenappshow.php',
+        'https://katchaapp.org/subscreenappshow.php',
         {
           method: 'GET',
           headers: {

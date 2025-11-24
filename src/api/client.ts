@@ -1,10 +1,19 @@
-import axios, { AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { getAccessToken, getBaseUrl, getDeviceId, getApiCredentials } from '../utils/storage.ts';
+import axios, {
+  AxiosInstance,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from 'axios';
+import {
+  getAccessToken,
+  getBaseUrl,
+  getDeviceId,
+  getApiCredentials,
+} from '../utils/storage.ts';
 import { buildStringToSign, hmacSha256Hex } from '../utils/signature.ts';
 
 // Central axios client. Signature/HMAC headers will be attached later when keys are injected.
 const client: AxiosInstance = axios.create({
-  baseURL: 'https://social-tracker.automasterpro.net', // Default, will be updated dynamically
+  baseURL: 'https://katchaapp.org', // Default, will be updated dynamically
   timeout: 20000,
 });
 
@@ -15,9 +24,15 @@ function serializeParamsPreserveOrder(params: any): string {
     const value = (params as any)[key];
     if (value === undefined || value === null) return;
     if (Array.isArray(value)) {
-      value.forEach((v) => parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`));
+      value.forEach((v) =>
+        parts.push(
+          `${encodeURIComponent(key)}=${encodeURIComponent(String(v))}`
+        )
+      );
     } else {
-      parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+      parts.push(
+        `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`
+      );
     }
   });
   return parts.join('&');
@@ -48,7 +63,11 @@ client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   setHeaderAll('X-Timestamp', ts);
   const creds = await getApiCredentials();
   // eslint-disable-next-line no-console
-  console.log('[API][Creds]', { hasCreds: !!creds, apiKeyLen: creds?.apiKey?.length, secretLen: creds?.apiSecret?.length });
+  console.log('[API][Creds]', {
+    hasCreds: !!creds,
+    apiKeyLen: creds?.apiKey?.length,
+    secretLen: creds?.apiSecret?.length,
+  });
   if (creds) {
     setHeaderAll('X-Api-Key', creds.apiKey);
     try {
@@ -68,14 +87,21 @@ client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
       const signature = hmacSha256Hex(creds.apiSecret, stringToSign);
       setHeaderAll('X-Signature', signature);
       // eslint-disable-next-line no-console
-      console.log('[API][Signature]', { method, pathWithQuery, ts, stringToSign, signatureLen: signature.length });
+      console.log('[API][Signature]', {
+        method,
+        pathWithQuery,
+        ts,
+        stringToSign,
+        signatureLen: signature.length,
+      });
     } catch (e) {
       // eslint-disable-next-line no-console
       console.log('[API][Signature Error]', e);
       setHeaderAll('X-Signature', '');
     }
   }
-  if (!hdrs['Content-Type'] && !(hdrs.get && hdrs.get('Content-Type'))) setHeaderAll('Content-Type', 'application/json');
+  if (!hdrs['Content-Type'] && !(hdrs.get && hdrs.get('Content-Type')))
+    setHeaderAll('Content-Type', 'application/json');
   const deviceId = await getDeviceId();
   if (deviceId) setHeaderAll('X-Device-Id', deviceId);
 
@@ -84,10 +110,18 @@ client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
     const method = (config.method || 'GET').toUpperCase();
     const url = `${config.baseURL || ''}${config.url || ''}`;
     const tokenLen = token ? String(token).length : 0;
-    const sig = hdrs.get ? hdrs.get('X-Signature') : (hdrs['X-Signature'] || hdrs['x-signature']);
-    const apiKey = hdrs.get ? hdrs.get('X-Api-Key') : (hdrs['X-Api-Key'] || hdrs['x-api-key']);
-    const xTs = hdrs.get ? hdrs.get('X-Timestamp') : (hdrs['X-Timestamp'] || hdrs['x-timestamp']);
-    const auth = hdrs.get ? hdrs.get('Authorization') : (hdrs['Authorization'] || hdrs['authorization']);
+    const sig = hdrs.get
+      ? hdrs.get('X-Signature')
+      : hdrs['X-Signature'] || hdrs['x-signature'];
+    const apiKey = hdrs.get
+      ? hdrs.get('X-Api-Key')
+      : hdrs['X-Api-Key'] || hdrs['x-api-key'];
+    const xTs = hdrs.get
+      ? hdrs.get('X-Timestamp')
+      : hdrs['X-Timestamp'] || hdrs['x-timestamp'];
+    const auth = hdrs.get
+      ? hdrs.get('Authorization')
+      : hdrs['Authorization'] || hdrs['authorization'];
     const sigLen = sig ? String(sig).length : 0;
     // Attach metadata for timing
     (config as any).metadata = { start: Date.now() };
@@ -109,7 +143,7 @@ client.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
       'X-Api-Key': apiKey ? 'SET' : 'MISSING',
       'X-Timestamp': xTs || 'MISSING',
       'X-Signature': sig ? 'SET' : 'MISSING',
-      'Authorization': auth ? 'SET' : 'MISSING',
+      Authorization: auth ? 'SET' : 'MISSING',
     });
   } catch {
     // ignore logging errors
@@ -121,11 +155,15 @@ client.interceptors.response.use(
   (response: AxiosResponse) => {
     try {
       const cfg: any = response.config || {};
-      const dur = cfg.metadata?.start ? Date.now() - cfg.metadata.start : undefined;
+      const dur = cfg.metadata?.start
+        ? Date.now() - cfg.metadata.start
+        : undefined;
       const method = (cfg.method || 'GET').toUpperCase();
       const url = `${cfg.baseURL || ''}${cfg.url || ''}`;
       // eslint-disable-next-line no-console
-      console.log('[API][Response]', response.status, method, url, { durationMs: dur });
+      console.log('[API][Response]', response.status, method, url, {
+        durationMs: dur,
+      });
       // Optional: small preview of data keys
       // eslint-disable-next-line no-console
       console.log('[API][DataKeys]', Object.keys(response.data || {}));
@@ -137,21 +175,24 @@ client.interceptors.response.use(
   async (error) => {
     try {
       const cfg: any = error?.config || {};
-      const dur = cfg.metadata?.start ? Date.now() - cfg.metadata.start : undefined;
+      const dur = cfg.metadata?.start
+        ? Date.now() - cfg.metadata.start
+        : undefined;
       const method = (cfg.method || 'GET').toUpperCase();
       const url = `${cfg.baseURL || ''}${cfg.url || ''}`;
       const status = error?.response?.status;
       const data = error?.response?.data;
       // eslint-disable-next-line no-console
-      console.log('[API][Error]', status, method, url, { durationMs: dur, data });
+      console.log('[API][Error]', status, method, url, {
+        durationMs: dur,
+        data,
+      });
     } catch {
       // ignore logging errors
     }
     // TODO: Handle refresh token flow when backend is ready
     return Promise.reject(error);
-  },
+  }
 );
 
 export default client;
-
-

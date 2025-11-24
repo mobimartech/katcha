@@ -24,7 +24,8 @@ import { getDeviceId } from '../../utils/storage';
 import { googleLogin } from '../../api/auth';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-import { auth } from '../../firebase';
+// ✅ Updated import for modular API
+import auth from '@react-native-firebase/auth';
 import {
   GoogleSignin,
   statusCodes,
@@ -48,14 +49,10 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
   const configureGoogleSignIn = () => {
     try {
       GoogleSignin.configure({
-        // Get this from Firebase Console > Project Settings > Web Client ID
         webClientId:
           '691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com',
-        //691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com
-        // Get this from GoogleService-Info.plist CLIENT_ID field
         iosClientId:
           '691913957787-tukkgqds27jc2qiuc9d9c0mojuibm7bt.apps.googleusercontent.com',
-
         offlineAccess: true,
         hostedDomain: '',
         forceCodeForRefreshToken: true,
@@ -75,6 +72,7 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
     try {
       console.log('[Login] Step 1: Attempting Firebase login with:', email);
 
+      // ✅ Using modular API - auth() is correct
       const userCredential = await auth().signInWithEmailAndPassword(
         email,
         password
@@ -114,15 +112,18 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
     } catch (e: any) {
       console.error('[Login] Login error:', e);
 
+      // ✅ Updated error handling using error codes
       let errorMessage = 'Invalid credentials';
-      if (e.message?.includes('user-not-found')) {
+      if (e.code === 'auth/user-not-found') {
         errorMessage = 'No account found with this email';
-      } else if (e.message?.includes('wrong-password')) {
+      } else if (e.code === 'auth/wrong-password') {
         errorMessage = 'Incorrect password';
-      } else if (e.message?.includes('invalid-email')) {
+      } else if (e.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email format';
-      } else if (e.message?.includes('network')) {
+      } else if (e.code === 'auth/network-request-failed') {
         errorMessage = 'Network error. Please check your connection';
+      } else if (e.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many failed attempts. Please try again later';
       } else if (e.message) {
         errorMessage = e.message;
       }
@@ -144,26 +145,22 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       console.log('[GoogleLogin] Step 2: Initiating Google Sign-In');
       const signInResponse = await GoogleSignin.signIn();
 
-      // **FIX: Check if sign-in was actually completed**
       if (!signInResponse) {
         console.log('[GoogleLogin] Sign-in cancelled - no response');
-        return; // Early return on cancel
+        return;
       }
 
       console.log('[GoogleLogin] Step 3: Google Sign-In successful');
       console.log('[GoogleLogin] Response:', signInResponse);
 
-      // Get user data from response
       const userData =
         'data' in signInResponse ? signInResponse.data : signInResponse;
 
-      // **FIX: Validate user data exists**
       if (!userData || !userData.user) {
         console.log('[GoogleLogin] Sign-in cancelled - no user data');
-        return; // Early return if no user data
+        return;
       }
 
-      // Get tokens
       const tokens = await GoogleSignin.getTokens();
       const idToken = tokens.idToken;
 
@@ -173,18 +170,17 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
 
       console.log('[GoogleLogin] Step 4: Got ID token');
 
-      // Extract user info
       const userEmail = userData?.user?.email || '';
       const userName =
         userData?.user?.name || userData?.user?.givenName || 'User';
 
-      // **FIX: Validate email exists**
       if (!userEmail) {
         console.log('[GoogleLogin] Sign-in cancelled - no email');
-        return; // Early return if no email
+        return;
       }
 
       console.log('[GoogleLogin] Step 5: Creating Firebase credential');
+      // ✅ Using modular API for Google credential
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
 
       console.log('[GoogleLogin] Step 6: Signing in to Firebase');
@@ -226,10 +222,9 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
     } catch (error: any) {
       console.error('[GoogleLogin] Full Error:', error);
 
-      // **FIX: Handle cancellation silently**
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
         console.log('[GoogleLogin] User cancelled sign-in');
-        return; // Just return, don't show error
+        return;
       }
 
       let errorMessage = 'Google Sign-In failed';
@@ -466,9 +461,6 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 8,
   },
-  eyeIconText: {
-    fontSize: 20,
-  },
   rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -547,7 +539,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#000', // Official Google Blue (Dark theme)
+    backgroundColor: '#000',
     height: 56,
     borderRadius: 12,
     paddingHorizontal: 20,
@@ -556,16 +548,14 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     marginRight: 12,
-    // backgroundColor: '#FFFFFF', // White background for the G logo
     borderRadius: 2,
     padding: 2,
   },
   googleButtonText: {
-    color: '#FFFFFF', // White text for dark button
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-
   signUpContainer: {
     alignItems: 'center',
     marginTop: 24,

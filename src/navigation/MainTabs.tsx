@@ -16,7 +16,7 @@ export default function MainTabs(): React.ReactElement {
       screenOptions={({ route }) => ({
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.text,
-        tabBarStyle: { 
+        tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 0,
           shadowColor: '#000',
@@ -31,7 +31,7 @@ export default function MainTabs(): React.ReactElement {
           paddingBottom: 8,
           height: 88,
         },
-        tabBarActiveTintColor: '#007AFF',
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: '#8E8E93',
         tabBarLabelStyle: {
           fontSize: 12,
@@ -44,36 +44,40 @@ export default function MainTabs(): React.ReactElement {
             Notifications: focused ? 'analytics' : 'analytics-outline',
             Profile: focused ? 'person-circle' : 'person-circle-outline',
           };
-          return <Icon name={map[route.name] || 'ellipse-outline'} color={color} size={size} />;
+          return (
+            <Icon
+              name={map[route.name] || 'ellipse-outline'}
+              color={color}
+              size={size}
+            />
+          );
         },
       })}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen} 
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
         options={{
           headerShown: false,
           tabBarLabel: 'Home',
-        }} 
+        }}
       />
-      <Tab.Screen 
-        name="Notifications" 
-        component={NotificationsScreen} 
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
         options={{
           headerShown: false,
           tabBarLabel: 'Notifications',
-        }}  
+        }}
       />
-      <Tab.Screen 
-        name="Profile" 
+      <Tab.Screen
+        name="Profile"
         component={ProfileScreen}
         options={{
           headerShown: false,
           tabBarLabel: 'Profile',
-        }}  
+        }}
       />
     </Tab.Navigator>
   );
 }
-
-

@@ -72,7 +72,8 @@ export default function OnboardingScreen({ navigation }) {
       animateTransition(currentIndex + 1);
     } else {
       await setOnboardingComplete();
-      navigation.replace('Login');
+      // navigation.replace('Login');
+      navigation.replace('MainTabs');
     }
   };
 

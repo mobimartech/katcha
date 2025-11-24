@@ -76,13 +76,13 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk rootProject.ext.compileSdkVersion
+    compileSdk 36
 
     namespace "com.Katcha"
     defaultConfig {
-        applicationId "com.Katcha"
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        applicationId "com.mni.social.follower.tracker"
+        minSdkVersion 24
+        targetSdkVersion 36
         versionCode 1
         versionName "1.0"
         missingDimensionStrategy 'react-native-camera', 'general'

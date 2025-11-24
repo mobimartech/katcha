@@ -1,4 +1,8 @@
-import { getApiCredentials, getAccessToken, getBaseUrl } from '../utils/storage.ts';
+import {
+  getApiCredentials,
+  getAccessToken,
+  getBaseUrl,
+} from '../utils/storage.ts';
 import CryptoJS from 'crypto-js';
 import { HmacSHA256 } from 'crypto-js';
 import { generateSignatureS } from './signature.ts';
@@ -26,10 +30,7 @@ export type Target = {
 };
 
 // Dummy list used on error
-const DUMMY_TARGETS: Target[] = [
-
-];
-
+const DUMMY_TARGETS: Target[] = [];
 
 // Simple runtime metrics and request control
 const apiCallCounts: Record<string, number> = {};
@@ -41,25 +42,24 @@ export function getApiCallCounts() {
   return { ...apiCallCounts };
 }
 
-
 // Clean API call helper
 const callAPI = async (method: string, path: string, body?: any) => {
-  const baseUrl = (await getBaseUrl()) || 'https://social-tracker.automasterpro.net';
+  const baseUrl = (await getBaseUrl()) || 'https://katchaapp.org';
   const creds = await getApiCredentials();
   const accessToken = await getAccessToken();
-  
+
   if (!creds || !accessToken) {
     throw new Error('Missing credentials or token');
   }
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = generateSignatureS(method, path, timestamp);
-  
+
   const headers = {
     'Content-Type': 'application/json',
     'x-api-key': creds.apiKey,
     'x-timestamp': timestamp.toString(),
     'x-signature': signature,
-    'authorization': `Bearer ${accessToken}`,
+    authorization: `Bearer ${accessToken}`,
   };
 
   // Track request counts for visibility
@@ -99,13 +99,17 @@ const callAPI = async (method: string, path: string, body?: any) => {
     }
 
     // Refresh + retry on expired token, else logout
-    const errorMessage: string = (parsed && parsed.error) ? String(parsed.error) : String(parsed || '');
+    const errorMessage: string =
+      parsed && parsed.error ? String(parsed.error) : String(parsed || '');
     if (response.status === 401 || /token expired/i.test(errorMessage)) {
       console.log('[API][Auth] 401/token expired. Attempting refresh...');
       const refreshed = await refreshAccessTokenIfPossible();
       if (refreshed) {
         const newAccess = await getAccessToken();
-        const retryHeaders = { ...headers, authorization: `Bearer ${newAccess}` };
+        const retryHeaders = {
+          ...headers,
+          authorization: `Bearer ${newAccess}`,
+        };
         response = await doRequest(retryHeaders);
         console.log('[API][Auth] Retry status:', response.status);
         const retryText = await response.text();
@@ -151,100 +155,118 @@ export async function listTargets(): Promise<Target[]> {
       console.log('[Targets][List] Returning cached targets');
       return targetsCache.data;
     }
-    
+
     const result = await callAPI('GET', '/api/targets');
-    
+
     if (result.status === 200 && result.data.targets) {
       const targets = result.data.targets as Array<any>;
-      console.log(`[Targets][List] Found ${targets.length} targets, fetching social data...`);
-      
+      console.log(
+        `[Targets][List] Found ${targets.length} targets, fetching social data...`
+      );
+
       // Fetch social data for each target
       const targetsWithSocialData = await Promise.all(
         targets.map(async (t) => {
           try {
-            console.log(`[Targets][List] Fetching complete social data for @${t.username} (${t.platform})...`);
-            
-            const params = { 
-              platform: t.platform, 
-              username: t.username, 
-              target_id: t.id 
+            console.log(
+              `[Targets][List] Fetching complete social data for @${t.username} (${t.platform})...`
+            );
+
+            const params = {
+              platform: t.platform,
+              username: t.username,
+              target_id: t.id,
             };
-            
+
             // Fetch userinfo, followers, and following in parallel using existing functions
-            const [userInfoData, followersData, followingData] = await Promise.all([
-              getUserInfo(params),
-              getFollowers(params),
-              getFollowing(params)
-            ]);
-            
+            const [userInfoData, followersData, followingData] =
+              await Promise.all([
+                getUserInfo(params),
+                getFollowers(params),
+                getFollowing(params),
+              ]);
+
             console.log(`[Targets][List] API responses for @${t.username}:`, {
               hasUserInfo: !!userInfoData,
               hasFollowers: !!followersData,
-              hasFollowing: !!followingData
+              hasFollowing: !!followingData,
             });
-            
+
             if (userInfoData) {
               // Process user info
               const base = userInfoData?.data || userInfoData || {};
-              
+
               // Log the actual data structure
-              console.log(`[Targets][List] Raw user data for @${t.username}:`, JSON.stringify(base).substring(0, 300));
-              
+              console.log(
+                `[Targets][List] Raw user data for @${t.username}:`,
+                JSON.stringify(base).substring(0, 300)
+              );
+
               // Process followers
-              const followersResult = followersData?.data || followersData || {};
+              const followersResult =
+                followersData?.data || followersData || {};
               const followersList = followersResult.followers || [];
-              const followersTotal = followersResult.total || followersList.length || 0;
-              
+              const followersTotal =
+                followersResult.total || followersList.length || 0;
+
               console.log(`[Targets][List] Followers for @${t.username}:`, {
                 count: followersTotal,
-                listLength: followersList.length
+                listLength: followersList.length,
               });
-              
+
               // Process following
-              const followingResult = followingData?.data || followingData || {};
+              const followingResult =
+                followingData?.data || followingData || {};
               const followingList = followingResult.following || [];
-              const followingTotal = followingResult.total || followingList.length || 0;
-              
+              const followingTotal =
+                followingResult.total || followingList.length || 0;
+
               console.log(`[Targets][List] Following for @${t.username}:`, {
                 count: followingTotal,
-                listLength: followingList.length
+                listLength: followingList.length,
               });
-              
+
               // Extract follower/following counts with multiple fallback fields
-              const followers = base.follower_count 
-                || base.followers_count 
-                || base.followers 
-                || base.followerCount 
-                || followersTotal
-                || 0;
-              
-              const following = base.following_count 
-                || base.followings_count 
-                || base.following 
-                || base.followingCount 
-                || followingTotal
-                || 0;
-              
+              const followers =
+                base.follower_count ||
+                base.followers_count ||
+                base.followers ||
+                base.followerCount ||
+                followersTotal ||
+                0;
+
+              const following =
+                base.following_count ||
+                base.followings_count ||
+                base.following ||
+                base.followingCount ||
+                followingTotal ||
+                0;
+
               // Extract profile picture and other details
-              const profilePic = base.profile_pic_url_hd 
-                || base.profile_pic_url 
-                || base.hd_profile_pic_url_info?.url
-                || base.avatar_url 
-                || '';
-              
+              const profilePic =
+                base.profile_pic_url_hd ||
+                base.profile_pic_url ||
+                base.hd_profile_pic_url_info?.url ||
+                base.avatar_url ||
+                '';
+
               const fullName = base.full_name || base.name || t.username;
               const isVerified = base.is_verified || false;
-              
-              console.log(`[Targets][List] ✅ Extracted data for @${t.username}:`, {
-                followers,
-                following,
-                fullName,
-                isVerified,
-                hasProfilePic: !!profilePic,
-                followersListCount: followersList.length,
-                followingListCount: followingList.length
-              });
-              
+
+              console.log(
+                `[Targets][List] ✅ Extracted data for @${t.username}:`,
+                {
+                  followers,
+                  following,
+                  fullName,
+                  isVerified,
+                  hasProfilePic: !!profilePic,
+                  followersListCount: followersList.length,
+                  followingListCount: followingList.length,
+                }
+              );
+
               // Combine all data for detail screen
               const combinedResult = {
                 ...base,
@@ -253,7 +275,7 @@ export async function listTargets(): Promise<Target[]> {
                 followers_total: followersTotal,
                 following_total: followingTotal,
               };
-              
+
               return {
                 id: t.id,
                 platform: t.platform,
@@ -267,10 +289,12 @@ export async function listTargets(): Promise<Target[]> {
                 is_active: t.is_active,
                 user_id: t.user_id,
                 added_at: t.added_at,
-                result: combinedResult  // Store full API response with lists
+                result: combinedResult, // Store full API response with lists
               } as Target;
             } else {
-              console.log(`[Targets][List] No user info data for @${t.username}`);
+              console.log(
+                `[Targets][List] No user info data for @${t.username}`
+              );
               return {
                 id: t.id,
                 platform: t.platform,
@@ -281,11 +305,14 @@ export async function listTargets(): Promise<Target[]> {
                 is_active: t.is_active,
                 user_id: t.user_id,
                 added_at: t.added_at,
-                result: null
+                result: null,
               } as Target;
             }
           } catch (error) {
-            console.error(`[Targets][List] Exception for @${t.username}:`, error);
+            console.error(
+              `[Targets][List] Exception for @${t.username}:`,
+              error
+            );
             return {
               id: t.id,
               platform: t.platform,
@@ -296,92 +323,127 @@ export async function listTargets(): Promise<Target[]> {
               is_active: t.is_active,
               user_id: t.user_id,
               added_at: t.added_at,
-              result: null
+              result: null,
             } as Target;
           }
         })
       );
-      
-      console.log('[Targets][List] Successfully fetched all targets with social data');
+
+      console.log(
+        '[Targets][List] Successfully fetched all targets with social data'
+      );
       targetsCache = {
         data: targetsWithSocialData,
         expiresAt: Date.now() + TARGETS_CACHE_TTL_MS,
       };
       return targetsWithSocialData;
     } else {
-      console.log('[Targets][List][Error] API returned error, using dummy data');
+      console.log(
+        '[Targets][List][Error] API returned error, using dummy data'
+      );
       return DUMMY_TARGETS;
     }
   } catch (e) {
-    console.log('[Targets][List][Error] Exception occurred, using dummy data:', e);
+    console.log(
+      '[Targets][List][Error] Exception occurred, using dummy data:',
+      e
+    );
     return DUMMY_TARGETS;
   }
 }
 
-export async function addTarget(platform: Platform, username: string): Promise<{ status: number; data?: any; error?: string }> {
+export async function addTarget(
+  platform: Platform,
+  username: string
+): Promise<{ status: number; data?: any; error?: string }> {
   try {
     console.log('[Targets][Add] Starting...');
-    
-    const result = await callAPI('POST', '/api/targets', { platform, username });
-    
+
+    const result = await callAPI('POST', '/api/targets', {
+      platform,
+      username,
+    });
+
     console.log('[Targets][Add][Response]', result);
-    
+
     if (result.status === 200 && result.data?.success) {
       return {
         status: result.status,
-        data: result.data
+        data: result.data,
       };
     } else {
-      console.log('[Targets][Add][Error] API returned error status:', result.status);
+      console.log(
+        '[Targets][Add][Error] API returned error status:',
+        result.status
+      );
       return {
         status: result.status,
         data: result.data,
-        error: result.data?.error || `API returned status ${result.status}`
+        error: result.data?.error || `API returned status ${result.status}`,
       };
     }
   } catch (e) {
     console.log('[Targets][Add][Error] Exception occurred:', e);
     return {
       status: 500,
-      error: e instanceof Error ? e.message : 'Network error occurred'
+      error: e instanceof Error ? e.message : 'Network error occurred',
     };
   }
 }
 
-export async function deleteTarget(target_id: number): Promise<{ success: boolean }> {
+export async function deleteTarget(
+  target_id: number
+): Promise<{ success: boolean }> {
   try {
     console.log('[Targets][Delete] Starting...');
-    
+
     const result = await callAPI('DELETE', '/api/targets', { target_id });
-    
+
     if (result.status === 200 && result.data.success) {
       return { success: true };
     } else {
-      console.log('[Targets][Delete][Error] API returned error, using dummy success');
+      console.log(
+        '[Targets][Delete][Error] API returned error, using dummy success'
+      );
       return { success: true };
     }
   } catch (e) {
-    console.log('[Targets][Delete][Error] Exception occurred, using dummy success:', e);
+    console.log(
+      '[Targets][Delete][Error] Exception occurred, using dummy success:',
+      e
+    );
     return { success: true };
   }
 }
 
 // Social API functions for User Detail
-export async function getUserInfo(params: { platform: Platform; username: string; target_id: number }): Promise<any> {
+export async function getUserInfo(params: {
+  platform: Platform;
+  username: string;
+  target_id: number;
+}): Promise<any> {
   try {
     console.log('[Social][UserInfo] Starting...');
-    
-    const query = `platform=${encodeURIComponent(params.platform)}&username=${encodeURIComponent(params.username)}&action=userinfo&target_id=${encodeURIComponent(String(params.target_id))}`;
+
+    const query = `platform=${encodeURIComponent(
+      params.platform
+    )}&username=${encodeURIComponent(
+      params.username
+    )}&action=userinfo&target_id=${encodeURIComponent(
+      String(params.target_id)
+    )}`;
     const path = `/api/social?${query}`;
-    console.log('[Social][UserInfo] Starting...',path);
+    console.log('[Social][UserInfo] Starting...', path);
 
     const result = await callAPI('GET', path);
-    console.log('[Social][UserInfo] result...',result);
+    console.log('[Social][UserInfo] result...', result);
 
     if (result.status === 200 && result.data) {
       return result.data;
     } else {
-      console.log('[Social][UserInfo][Error] API returned error, using dummy data');
+      console.log(
+        '[Social][UserInfo][Error] API returned error, using dummy data'
+      );
       return null;
     }
   } catch (e) {
@@ -390,16 +452,26 @@ export async function getUserInfo(params: { platform: Platform; username: string
   }
 }
 
-export async function getFollowers(params: { platform: Platform; username: string; target_id: number }): Promise<any> {
+export async function getFollowers(params: {
+  platform: Platform;
+  username: string;
+  target_id: number;
+}): Promise<any> {
   try {
     console.log('[Social][Followers] Starting...');
-    
-    const query = `platform=${encodeURIComponent(params.platform)}&username=${encodeURIComponent(params.username)}&action=followers&target_id=${encodeURIComponent(String(params.target_id))}`;
+
+    const query = `platform=${encodeURIComponent(
+      params.platform
+    )}&username=${encodeURIComponent(
+      params.username
+    )}&action=followers&target_id=${encodeURIComponent(
+      String(params.target_id)
+    )}`;
     const path = `/api/social?${query}`;
-    console.log('[Social][Followers] Starting...',path);
+    console.log('[Social][Followers] Starting...', path);
 
     const result = await callAPI('GET', path);
-    console.log('[Social][Followers] Starting...',result);
+    console.log('[Social][Followers] Starting...', result);
 
     if (result.status === 200 && result.data) {
       return result.data;
@@ -413,16 +485,26 @@ export async function getFollowers(params: { platform: Platform; username: strin
   }
 }
 
-export async function getFollowing(params: { platform: Platform; username: string; target_id: number }): Promise<any> {
+export async function getFollowing(params: {
+  platform: Platform;
+  username: string;
+  target_id: number;
+}): Promise<any> {
   try {
     console.log('[Social][Following] Starting...');
-    
-    const query = `platform=${encodeURIComponent(params.platform)}&username=${encodeURIComponent(params.username)}&action=following&target_id=${encodeURIComponent(String(params.target_id))}`;
+
+    const query = `platform=${encodeURIComponent(
+      params.platform
+    )}&username=${encodeURIComponent(
+      params.username
+    )}&action=following&target_id=${encodeURIComponent(
+      String(params.target_id)
+    )}`;
     const path = `/api/social?${query}`;
-    console.log('[Social][getFollowing] Starting...',path);
+    console.log('[Social][getFollowing] Starting...', path);
 
     const result = await callAPI('GET', path);
-    console.log('[Social][getFollowing] Starting...',result);
+    console.log('[Social][getFollowing] Starting...', result);
 
     if (result.status === 200 && result.data) {
       return result.data;
@@ -450,9 +532,9 @@ export type SubscriptionInfo = {
 export async function getSubscriptions(): Promise<SubscriptionInfo> {
   try {
     console.log('[Subscription] Starting...');
-    
+
     const result = await callAPI('GET', '/api/subscription');
-    
+
     if (result.status === 200 && result.data) {
       return result.data as SubscriptionInfo;
     } else {
@@ -468,7 +550,10 @@ export async function getSubscriptions(): Promise<SubscriptionInfo> {
       };
     }
   } catch (e) {
-    console.log('[Subscription][Error] Exception occurred, using dummy data:', e);
+    console.log(
+      '[Subscription][Error] Exception occurred, using dummy data:',
+      e
+    );
     return {
       is_valid: false,
       target_limit: 0,
@@ -480,4 +565,3 @@ export async function getSubscriptions(): Promise<SubscriptionInfo> {
     };
   }
 }
-

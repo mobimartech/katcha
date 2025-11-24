@@ -19,7 +19,8 @@ import {
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAppTheme } from '../../theme/ThemeProvider';
-import { addTarget } from '../../api/targets';
+import { addTarget, listTargets } from '../../api/targets';
+import { getIsLoggedIn } from '../../utils/auth';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import variables from '../../../constants/variables.js';
@@ -62,28 +63,38 @@ export default function AddUserScreen({
       Alert.alert('Missing', 'Enter a username');
       return;
     }
+    // Check login status
+    const isLoggedIn = await getIsLoggedIn();
+    if (!isLoggedIn) {
+      // Go to Login, and after login, come back to AddUser with pre-filled data
+      navigation.replace('Login');
+      return;
+    }
+
     try {
       setLoading(true);
-      // eslint-disable-next-line no-console
-      console.log('[AddUser][Request]', { platform, username });
       const res = await addTarget(platform, username.trim());
-      // eslint-disable-next-line no-console
-      console.log('[AddUser][Response]', res);
 
       if (res.status === 200) {
-        Alert.alert(
-          'Success',
-          `@${username.trim()} on ${platform} added to tracking`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Navigate back to HomeScreen
-                navigation.goBack();
+        // Check if this is the first target
+        const targets = await listTargets();
+        if (targets.length === 1) {
+          // First target just added, require subscription
+          navigation.replace('Subscription');
+        } else {
+          Alert.alert(
+            'Success',
+            `@${username.trim()} on ${platform} added to tracking`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  navigation.replace('MainTabs');
+                },
               },
-            },
-          ]
-        );
+            ]
+          );
+        }
       } else {
         const errorMessage = res.error || `API returned status ${res.status}`;
         Alert.alert(
@@ -93,17 +104,13 @@ export default function AddUserScreen({
             {
               text: 'OK',
               onPress: () => {
-                // Navigate back to HomeScreen even on error
-                navigation.goBack();
-                navigation.navigate('Subscription');
+                navigation.replace('MainTabs');
               },
             },
           ]
         );
       }
     } catch (e) {
-      // eslint-disable-next-line no-console
-      console.log('[AddUser][Error]', e);
       Alert.alert(
         'Error',
         `Failed to add @${username.trim()}. Please try again.`,
@@ -111,9 +118,7 @@ export default function AddUserScreen({
           {
             text: 'OK',
             onPress: () => {
-              // Navigate back to HomeScreen even on error
-              navigation.goBack();
-              navigation.navigate('Subscription');
+              navigation.replace('MainTabs');
             },
           },
         ]
@@ -127,8 +132,6 @@ export default function AddUserScreen({
     Animated.spring(addScale, { toValue: 0.97, useNativeDriver: true }).start();
   const onPressOut = () =>
     Animated.spring(addScale, { toValue: 1, useNativeDriver: true }).start();
-
-  const isInstagram = platform === 'instagram';
 
   const renderHeader = () => (
     <View style={[styles.headerGradient]}>
@@ -202,28 +205,26 @@ export default function AddUserScreen({
             </View>
             <Icon name="search" size={18} color={colors.textSecondary} />
           </View>
-
           <View style={{ height: 16 }} />
-
+          // In your ChoosePlatform component, update the buttons:
           {/* Instagram Button */}
           <Pressable
             onPress={() => {
               setPlatform('instagram');
               setStep('form');
             }}
-            style={[styles.shadowWrap, { marginBottom: 12 }]}
+            style={[styles.shadowWrap, { marginBottom: 16 }]}
           >
             <LinearGradient
-              colors={[colors.primary as string, '#6AA6FF']}
+              colors={['#5B51D8', '#E1306C']} // Instagram brand gradient: purple-blue to pink
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[styles.ctaButton, { borderRadius: radius.round }]}
+              end={{ x: 1, y: 0 }}
+              style={[styles.ctaButtonns, { borderRadius: 28 }]}
             >
-              <Icon name="logo-instagram" size={20} color="#FFFFFF" />
+              <Icon name="logo-instagram" size={24} color="#FFFFFF" />
               <Text style={styles.ctaText}>Connect Instagram Account</Text>
             </LinearGradient>
           </Pressable>
-
           {/* TikTok Button */}
           <Pressable
             onPress={() => {
@@ -233,7 +234,7 @@ export default function AddUserScreen({
             style={styles.shadowWrap}
           >
             <View style={[styles.ctaButton, styles.ctaButtonBlack]}>
-              <Icon name="logo-tiktok" size={20} color="#FFFFFF" />
+              <Icon name="logo-tiktok" size={24} color="#FFFFFF" />
               <Text style={styles.ctaText}>Connect TikTok Account</Text>
             </View>
           </Pressable>
@@ -337,7 +338,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   title: { fontSize: 22, fontWeight: '800' },
   subtitle: { marginTop: 4, fontSize: 13, fontWeight: '600' },
-  card: { padding: 16, borderWidth: 0, borderRadius: 0 },
+  card: {
+    padding: 20, // More padding to match screenshot
+    borderWidth: 0,
+    borderRadius: 0,
+  },
   segmentRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   segment: {
     paddingVertical: 10,
@@ -419,10 +424,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 56,
-    paddingHorizontal: 16,
+    // paddingHorizontal: 20,
     borderRadius: 28,
+    width: '100%', // Ensure full width
   },
-  ctaText: { color: '#FFFFFF', fontWeight: '800', marginLeft: 8 },
+    ctaButtonns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 56,
+    // paddingHorizontal: 20,
+    borderRadius: 28,
+    width: '100%', // Ensure full width
+  },
+  ctaText: {
+    color: '#FFFFFF',
+    fontWeight: '700', // Match screenshot weight
+    fontSize: 16, // Slightly larger text
+    marginLeft: 10, // Better spacing from icon
+  },
   bottomCta: { position: 'absolute', left: 16, right: 16, bottom: 24 },
   bottomButton: {
     borderRadius: 28,
@@ -431,5 +451,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   bottomButtonText: { color: '#FFFFFF', fontWeight: '800', fontSize: 16 },
-  ctaButtonBlack: { backgroundColor: '#000000', borderRadius: 28 },
+  ctaButtonBlack: {
+    backgroundColor: '#000000',
+    borderRadius: 28,
+  },
 });

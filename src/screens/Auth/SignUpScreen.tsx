@@ -18,7 +18,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { getDeviceId } from '../../utils/storage';
 import { googleLogin } from '../../api/auth';
-import { auth } from '../../firebase';
+import Icon from 'react-native-vector-icons/Ionicons';
+
+// ✅ Updated import for modular API
+import auth from '@react-native-firebase/auth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
@@ -51,6 +54,7 @@ export default function SignUpScreen({
     try {
       console.log('[SignUp] Step 1: Creating Firebase account...');
 
+      // ✅ Using modular API - auth() is correct
       const userCredential = await auth().createUserWithEmailAndPassword(
         email,
         password
@@ -95,15 +99,18 @@ export default function SignUpScreen({
     } catch (e: any) {
       console.error('[SignUp] Sign up error:', e);
 
+      // ✅ Updated error handling using error codes
       let errorMessage = 'Could not create account';
-      if (e.message?.includes('email-already-in-use')) {
+      if (e.code === 'auth/email-already-in-use') {
         errorMessage = 'This email is already registered';
-      } else if (e.message?.includes('weak-password')) {
+      } else if (e.code === 'auth/weak-password') {
         errorMessage = 'Password should be at least 6 characters';
-      } else if (e.message?.includes('invalid-email')) {
+      } else if (e.code === 'auth/invalid-email') {
         errorMessage = 'Invalid email format';
-      } else if (e.message?.includes('network')) {
+      } else if (e.code === 'auth/network-request-failed') {
         errorMessage = 'Network error. Please check your connection';
+      } else if (e.code === 'auth/operation-not-allowed') {
+        errorMessage = 'Email/password sign-up is not enabled';
       } else if (e.message) {
         errorMessage = e.message;
       }
@@ -187,9 +194,11 @@ export default function SignUpScreen({
                     style={styles.eyeIcon}
                     onPress={() => setShowPassword(!showPassword)}
                   >
-                    <Text style={styles.eyeIconText}>
-                      {showPassword ? '👁️' : '👁️‍🗨️'}
-                    </Text>
+                    <Icon
+                      name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                      size={24}
+                      color="#666"
+                    />
                   </Pressable>
                 </View>
               </View>
@@ -317,9 +326,6 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 8,
-  },
-  eyeIconText: {
-    fontSize: 20,
   },
   termsContainer: {
     flexDirection: 'row',

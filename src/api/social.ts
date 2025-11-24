@@ -1,27 +1,31 @@
-import { getApiCredentials, getAccessToken, getBaseUrl } from '../utils/storage.ts';
+import {
+  getApiCredentials,
+  getAccessToken,
+  getBaseUrl,
+} from '../utils/storage.ts';
 import { generateSignatureS } from './signature.ts';
 
 export type Platform = 'instagram' | 'tiktok';
 
 // Clean API call helper (same as targets.ts)
 const callAPI = async (method: string, path: string, body?: any) => {
-  const baseUrl = (await getBaseUrl()) || 'https://social-tracker.automasterpro.net';
+  const baseUrl = (await getBaseUrl()) || 'https://katchaapp.org';
   const creds = await getApiCredentials();
   const accessToken = await getAccessToken();
-  
+
   if (!creds || !accessToken) {
     throw new Error('Missing credentials or token');
   }
-  
+
   const timestamp = Math.floor(Date.now() / 1000);
   const signature = generateSignatureS(method, path, timestamp);
-  
+
   const headers = {
     'Content-Type': 'application/json',
     'x-api-key': creds.apiKey,
     'x-timestamp': timestamp.toString(),
     'x-signature': signature,
-    'authorization': `Bearer ${accessToken}`,
+    authorization: `Bearer ${accessToken}`,
   };
 
   console.log(`--- ${method} ${path} REQUEST ---`);
@@ -71,72 +75,115 @@ export const dummyUserInfo = {
           'https://scontent-sjc3-1.cdninstagram.com/v/t51.2885-19/536303937_17854647735508949_4371086600476127648_n.jpg?stp=dst-jpg_e0_s150x150_tt6',
       },
     ],
-    bio_links: [
-      { url: 'http://help.instagram.com', title: '' },
-    ],
+    bio_links: [{ url: 'http://help.instagram.com', title: '' }],
   },
 };
 
-export async function getUserInfo(params: { platform: Platform; username: string; target_id: number }) {
+export async function getUserInfo(params: {
+  platform: Platform;
+  username: string;
+  target_id: number;
+}) {
   try {
     console.log('[Social][UserInfo] Starting...');
-    
+
     // Build the query path with parameters
-    const query = `platform=${encodeURIComponent(params.platform)}&username=${encodeURIComponent(params.username)}&action=userinfo&target_id=${encodeURIComponent(String(params.target_id))}`;
+    const query = `platform=${encodeURIComponent(
+      params.platform
+    )}&username=${encodeURIComponent(
+      params.username
+    )}&action=userinfo&target_id=${encodeURIComponent(
+      String(params.target_id)
+    )}`;
     const path = `/api/social?${query}`;
-    
+
     const result = await callAPI('GET', path);
-    
+
     if (result.status === 200 && result.data) {
       return result.data;
     } else {
-      console.log('[Social][UserInfo][Error] API returned error, using dummy data');
+      console.log(
+        '[Social][UserInfo][Error] API returned error, using dummy data'
+      );
       return dummyUserInfo;
     }
   } catch (e) {
-    console.log('[Social][UserInfo][Error] Exception occurred, using dummy data:', e);
+    console.log(
+      '[Social][UserInfo][Error] Exception occurred, using dummy data:',
+      e
+    );
     return dummyUserInfo;
   }
 }
 
-export async function getFollowers(params: { platform: Platform; username: string; target_id: number }) {
+export async function getFollowers(params: {
+  platform: Platform;
+  username: string;
+  target_id: number;
+}) {
   try {
     console.log('[Social][Followers] Starting...');
-    
-    const query = `platform=${encodeURIComponent(params.platform)}&username=${encodeURIComponent(params.username)}&action=followers&target_id=${encodeURIComponent(String(params.target_id))}`;
+
+    const query = `platform=${encodeURIComponent(
+      params.platform
+    )}&username=${encodeURIComponent(
+      params.username
+    )}&action=followers&target_id=${encodeURIComponent(
+      String(params.target_id)
+    )}`;
     const path = `/api/social?${query}`;
-    
+
     const result = await callAPI('GET', path);
-    
+
     if (result.status === 200 && result.data) {
       return result.data;
     } else {
-      console.log('[Social][Followers][Error] API returned error, using empty array');
+      console.log(
+        '[Social][Followers][Error] API returned error, using empty array'
+      );
       return { data: { followers: [], total: 0 } };
     }
   } catch (e) {
-    console.log('[Social][Followers][Error] Exception occurred, using empty array:', e);
+    console.log(
+      '[Social][Followers][Error] Exception occurred, using empty array:',
+      e
+    );
     return { data: { followers: [], total: 0 } };
   }
 }
 
-export async function getFollowing(params: { platform: Platform; username: string; target_id: number }) {
+export async function getFollowing(params: {
+  platform: Platform;
+  username: string;
+  target_id: number;
+}) {
   try {
     console.log('[Social][Following] Starting...');
-    
-    const query = `platform=${encodeURIComponent(params.platform)}&username=${encodeURIComponent(params.username)}&action=following&target_id=${encodeURIComponent(String(params.target_id))}`;
+
+    const query = `platform=${encodeURIComponent(
+      params.platform
+    )}&username=${encodeURIComponent(
+      params.username
+    )}&action=following&target_id=${encodeURIComponent(
+      String(params.target_id)
+    )}`;
     const path = `/api/social?${query}`;
-    
+
     const result = await callAPI('GET', path);
-    
+
     if (result.status === 200 && result.data) {
       return result.data;
     } else {
-      console.log('[Social][Following][Error] API returned error, using empty array');
+      console.log(
+        '[Social][Following][Error] API returned error, using empty array'
+      );
       return { data: { following: [], total: 0 } };
     }
   } catch (e) {
-    console.log('[Social][Following][Error] Exception occurred, using empty array:', e);
+    console.log(
+      '[Social][Following][Error] Exception occurred, using empty array:',
+      e
+    );
     return { data: { following: [], total: 0 } };
   }
 }

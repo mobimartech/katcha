@@ -23,11 +23,11 @@ function App(): React.JSX.Element {
 
   const backgroundColor = isDarkMode ? '#000000' : '#FFFFFF';
   const textColor = isDarkMode ? '#FFFFFF' : '#000000';
- 
+
   const generateSignature = (
     method: string,
     path: string,
-    timestamp: number,
+    timestamp: number
   ): string => {
     const stringToSign = `method=${method}&path=${path}&timestamp=${timestamp}`;
 
@@ -39,7 +39,7 @@ function App(): React.JSX.Element {
     console.log('API Secret (first 10 chars):', API_SECRET.substring(0, 10));
 
     const signature = HmacSHA256(stringToSign, API_SECRET).toString(
-      CryptoJS.enc.Hex,
+      CryptoJS.enc.Hex
     );
 
     console.log('Generated signature:', signature);
@@ -51,7 +51,7 @@ function App(): React.JSX.Element {
   const makeFetchRequest = async (
     url: string,
     headers: any,
-    body: string,
+    body: string
   ): Promise<any> => {
     try {
       console.log('Making fetch request to:', url);
@@ -109,7 +109,7 @@ function App(): React.JSX.Element {
       console.log('--- GET TARGETS REQUEST ---');
       console.log('Request Headers:', JSON.stringify(targetHeaders, null, 2));
 
-      const response = await fetch('https://social-tracker.automasterpro.net/api/targets', {
+      const response = await fetch('https://katchaapp.org/api/targets', {
         method: 'GET',
         headers: targetHeaders,
       });
@@ -158,15 +158,15 @@ function App(): React.JSX.Element {
 
       console.log('--- LOGIN REQUEST ---');
       const loginResult = await makeFetchRequest(
-        'https://social-tracker.automasterpro.net/api/auth',
+        'https://katchaapp.org/api/auth',
         loginHeaders,
-        loginBody,
+        loginBody
       );
 
       console.log('Login Result Status:', loginResult.status);
       console.log(
         'Login Result Data:',
-        JSON.stringify(loginResult.data, null, 2),
+        JSON.stringify(loginResult.data, null, 2)
       );
 
       if (!loginResult.data.success) {
@@ -186,18 +186,18 @@ function App(): React.JSX.Element {
 
       // First, get existing targets
       console.log('\n--- Waiting 100ms before get targets request ---\n');
-      await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 100));
 
       const getTargetsResult = await getTargets(accessToken);
       console.log('Get Targets Result Status:', getTargetsResult.status);
       console.log(
         'Get Targets Result Data:',
-        JSON.stringify(getTargetsResult.data, null, 2),
+        JSON.stringify(getTargetsResult.data, null, 2)
       );
 
       // Then, add a new target
       console.log('\n--- Waiting 100ms before add target request ---\n');
-      await new Promise<void>(resolve => setTimeout(() => resolve(), 100));
+      await new Promise<void>((resolve) => setTimeout(() => resolve(), 100));
 
       const timestamp = Math.floor(Date.now() / 1000);
       const method = 'POST';
@@ -223,30 +223,36 @@ function App(): React.JSX.Element {
       console.log('Request Body:', targetBody);
 
       const targetResult = await makeFetchRequest(
-        'https://social-tracker.automasterpro.net/api/targets',
+        'https://katchaapp.org/api/targets',
         targetHeaders,
-        targetBody,
+        targetBody
       );
 
       console.log('Add Target Result Status:', targetResult.status);
       console.log(
         'Add Target Result Data:',
-        JSON.stringify(targetResult.data, null, 2),
+        JSON.stringify(targetResult.data, null, 2)
       );
 
       if (targetResult.status === 200 && targetResult.data.success) {
         Alert.alert(
           'Success! 🎉',
-          `Get Targets: ${getTargetsResult.data?.targets?.length || 0} targets found\n\nAdd Target: ${targetResult.data.message || 'Target added successfully'}`,
+          `Get Targets: ${
+            getTargetsResult.data?.targets?.length || 0
+          } targets found\n\nAdd Target: ${
+            targetResult.data.message || 'Target added successfully'
+          }`
         );
       } else {
         Alert.alert(
           'API Error',
-          `Get Targets Status: ${getTargetsResult.status}\nAdd Target Status: ${targetResult.status}\n\nAdd Target Response:\n${JSON.stringify(
+          `Get Targets Status: ${getTargetsResult.status}\nAdd Target Status: ${
+            targetResult.status
+          }\n\nAdd Target Response:\n${JSON.stringify(
             targetResult.data,
             null,
-            2,
-          )}`,
+            2
+          )}`
         );
       }
 
@@ -260,7 +266,7 @@ function App(): React.JSX.Element {
 
       Alert.alert(
         'Error',
-        `An error occurred:\n\n${error.message || 'Unknown error'}`,
+        `An error occurred:\n\n${error.message || 'Unknown error'}`
       );
     } finally {
       setLoading(false);

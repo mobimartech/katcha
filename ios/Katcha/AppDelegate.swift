@@ -95,10 +95,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 // MARK: - UNUserNotificationCenterDelegate
 extension AppDelegate: UNUserNotificationCenterDelegate {
   // Handle notification when app is in foreground
-  func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
     print("Notification received in foreground: \(notification.request.content.title)")
-    completionHandler([.alert, .badge, .sound])
-  }
+    if #available(iOS 14.0, *) {
+        completionHandler([.banner, .list, .badge, .sound])
+    } else {
+        completionHandler([.alert, .badge, .sound])
+    }
+}
+
   
   // Handle notification tap
   func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {

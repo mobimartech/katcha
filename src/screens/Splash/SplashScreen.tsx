@@ -1,34 +1,41 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView, StyleSheet, Image } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { getIsLoggedIn } from '../../utils/auth';
 import { getOnboardingComplete } from '../../utils/onboarding';
+import Purchases, { PurchasesPackage } from 'react-native-purchases';
 
 export default function SplashScreen({ navigation }) {
+  const [isPremium, setIsPremium] = useState(false);
+
+  const checkPremiumStatus = async () => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      const premium =
+        typeof customerInfo.entitlements.active['premium'] !== 'undefined';
+      setIsPremium(premium);
+    } catch (error) {
+      setIsPremium(false);
+      console.error('Failed to check premium status:', error);
+    }
+  };
+
   useEffect(() => {
     const checkAppStatus = async () => {
       try {
         const hasCompletedOnboarding = await getOnboardingComplete();
-        const isLoggedIn = await getIsLoggedIn();
-
-        console.log('Onboarding complete:', hasCompletedOnboarding);
-        console.log('User logged in:', isLoggedIn);
-
+        checkPremiumStatus();
         setTimeout(() => {
           if (!hasCompletedOnboarding) {
-            // First time user - show onboarding
             navigation.replace('Onboarding');
-          } else if (isLoggedIn) {
-            // User has seen onboarding and is logged in
-            navigation.replace('MainTabs');
           } else {
-            // User has seen onboarding but not logged in
-            navigation.replace('Login');
+            if (isPremium === false) {
+              navigation.replace('Subscription');
+            } else {
+              navigation.replace('MainTabs');
+            }
           }
         }, 1000);
       } catch (error) {
-        console.error('Error checking app status:', error);
-        // Default to onboarding on error
         navigation.replace('Onboarding');
       }
     };
@@ -50,16 +57,7 @@ export default function SplashScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  gradient: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logo: {
-    width: 300,
-    height: 300,
-  },
+  gradient: { flex: 1 },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 300, height: 300 },
 });
