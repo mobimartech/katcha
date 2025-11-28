@@ -1,112 +1,525 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, SafeAreaView, StyleSheet, Text, View, Pressable, RefreshControl } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  FlatList,
+  TouchableOpacity,
+  StatusBar,
+  RefreshControl,
+  Alert,
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useAppTheme } from '../../theme/ThemeProvider';
-import Card from '../../components/UI/Card';
-import EmptyState from '../../components/UI/EmptyState';
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { MainTabParamList } from '../../navigation/types';
-import { sendFirebaseTokenToServer } from '../../api/notifications';
-import { getItem } from '../../utils/storage.ts';
 import { useFocusEffect } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../navigation/types';
+import {
+  getSavedNotifications,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+  deleteNotification,
+  clearAllNotifications,
+  type SavedNotification,
+} from '../../utils/notificationStorage';
+import { formatNumber } from '../../utils/formatNumber';
 
-type Props = BottomTabScreenProps<MainTabParamList, 'Notifications'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
-type FeedItem = {
-  id: string;
-  username: string;
-  platform: 'instagram' | 'tiktok' | string;
-  followers: number;
-  following: number;
-  fetchedAt: number;
-};
-
-const FEED_KEY = 'notifications_feed';
-
-export default function NotificationsScreen({ navigation }: Props): React.ReactElement {
-  const { colors, radius, spacing, typography, shadows } = useAppTheme();
-  const [feed, setFeed] = useState<FeedItem[]>([]);
+export default function NotificationsScreen({ navigation }: Props) {
+  const [notifications, setNotifications] = useState<SavedNotification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const loadFeed = useCallback(async () => {
+  const loadNotifications = async () => {
     try {
-      const raw = await getItem(FEED_KEY);
-      if (!raw) { setFeed([]); return; }
-      const parsed = JSON.parse(raw) as FeedItem[];
-      setFeed(parsed.sort((a, b) => b.fetchedAt - a.fetchedAt));
-    } catch (e) {
-      setFeed([]);
+      const data = await getSavedNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('[Notifications] Error loading:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  };
 
   useFocusEffect(
-    useCallback(() => {
-      void loadFeed();
-      return () => {};
-    }, [loadFeed])
+    React.useCallback(() => {
+      loadNotifications();
+    }, [])
   );
 
-  // TODO: On app start, request permission and get FCM/APNs token, then:
-  // sendFirebaseTokenToServer(token)
-  void sendFirebaseTokenToServer('placeholder-token');
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadNotifications();
+  };
+
+  const handleNotificationPress = async (notification: SavedNotification) => {
+    // Mark as read
+    await markNotificationAsRead(notification.id);
+    loadNotifications();
+
+    // Navigate to target detail if available
+    if (notification.targetId && notification.username && notification.platform) {
+      navigation.navigate('UserDetail', {
+        userId: notification.targetId.toString(),
+        username: notification.username,
+        platform: notification.platform as 'instagram' | 'tiktok',
+      });
+    }
+  };
+
+  const handleDelete = async (notificationId: string) => {
+    Alert.alert(
+      'Delete Notification',
+      'Are you sure you want to delete this notification?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteNotification(notificationId);
+            loadNotifications();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleClearAll = () => {
+    Alert.alert(
+      'Clear All Notifications',
+      'Are you sure you want to clear all notifications?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            await clearAllNotifications();
+            loadNotifications();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllNotificationsAsRead();
+    loadNotifications();
+  };
+
+  const renderNotification = ({ item }: { item: SavedNotification }) => {
+    const icon =
+      item.type === 'target_change'
+        ? 'analytics'
+        : item.type === 'alert'
+        ? 'warning'
+        : 'information-circle';
+
+    const iconColor = item.read ? 'rgba(255,255,255,0.5)' : '#4ade80';
+
+    return (
+      <TouchableOpacity
+        style={[styles.notificationCard, !item.read && styles.unreadCard]}
+        // onPress={() => handleNotificationPress(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.cardContent}>
+          <View style={styles.iconBox}>
+            <Icon name={icon} size={24} color={iconColor} />
+          </View>
+
+          <View style={styles.textContent}>
+            <View style={styles.headerRow}>
+              <Text style={[styles.title, !item.read && styles.unreadTitle]}>
+                {item.title}
+              </Text>
+              {!item.read && <View style={styles.unreadDot} />}
+            </View>
+
+            <Text style={styles.message}>{item.message}</Text>
+
+            {item.changeData && (
+              <View style={styles.changesGrid}>
+                {item.changeData.followersDiff !== 0 && (
+                  <View style={styles.changeBox}>
+                    <Icon name="people" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.changeText}>
+                      {formatNumber(item.changeData.oldFollowers)} →{' '}
+                      {formatNumber(item.changeData.newFollowers)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.changeDiff,
+                        item.changeData.followersDiff > 0
+                          ? styles.positiveChange
+                          : styles.negativeChange,
+                      ]}
+                    >
+                      {item.changeData.followersDiff > 0 ? '+' : ''}
+                      {formatNumber(item.changeData.followersDiff)}
+                    </Text>
+                  </View>
+                )}
+
+                {item.changeData.followingDiff !== 0 && (
+                  <View style={styles.changeBox}>
+                    <Icon name="person-add" size={14} color="rgba(255,255,255,0.8)" />
+                    <Text style={styles.changeText}>
+                      {formatNumber(item.changeData.oldFollowing)} →{' '}
+                      {formatNumber(item.changeData.newFollowing)}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.changeDiff,
+                        item.changeData.followingDiff > 0
+                          ? styles.positiveChange
+                          : styles.negativeChange,
+                      ]}
+                    >
+                      {item.changeData.followingDiff > 0 ? '+' : ''}
+                      {formatNumber(item.changeData.followingDiff)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            <View style={styles.footer}>
+              <Icon name="time-outline" size={12} color="rgba(255,255,255,0.6)" />
+              <Text style={styles.timestamp}>
+                {formatTimestamp(item.timestamp)}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDelete(item.id)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Icon name="close-circle" size={24} color="rgba(255,255,255,0.4)" />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
-      <View style={[styles.headerBar, { borderBottomColor: colors.border }]}>
-        <Pressable onPress={() => navigation.goBack()} style={[styles.headerIconBtn, { borderColor: colors.border }]}> 
-          <Icon name="chevron-back" size={18} color={colors.text} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Notifications</Text>
-        <View style={{ width: 36 }} />
-      </View>
+    <LinearGradient
+      colors={['#667eea', '#764ba2', '#f093fb', '#4facfe']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.container}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      <FlatList
-        data={feed}
-        keyExtractor={(i) => i.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadFeed().finally(() => setRefreshing(false)); }} />}
-        renderItem={({ item }) => {
-          const icon = item.platform === 'instagram' ? 'logo-instagram' : item.platform === 'tiktok' ? 'logo-tiktok' : 'person';
-          const when = new Date(item.fetchedAt);
-          const dateLabel = `${when.toLocaleDateString()} ${when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-          return (
-            <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border, ...shadows.small }]}> 
-              <View style={[styles.iconWrap, { backgroundColor: '#EDEBFE' }]}> 
-                <Icon name={icon as any} size={18} color={'#8B5CF6'} />
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Icon name="arrow-back" size={24} color="#ffffff" />
+          </TouchableOpacity>
+
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Notifications</Text>
+            {unreadCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadCount}</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>@{item.username}</Text>
-                <Text style={[styles.body, { color: colors.textSecondary }]} numberOfLines={1}>Followers {item.followers.toLocaleString()}   •   Following {item.following.toLocaleString()}</Text>
-                <Text style={[styles.time, { color: colors.textSecondary }]}>{dateLabel}</Text>
-              </View>
+            )}
+          </View>
+
+          {notifications.length > 0 && (
+            <TouchableOpacity style={styles.menuButton} onPress={handleClearAll}>
+              <Icon name="trash-outline" size={22} color="#ffffff" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Actions Bar */}
+        {notifications.length > 0 && unreadCount > 0 && (
+          <View style={styles.actionsBar}>
+            <TouchableOpacity style={styles.actionButton} onPress={handleMarkAllRead}>
+              <Icon name="checkmark-done" size={18} color="#ffffff" />
+              <Text style={styles.actionText}>Mark all as read</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Notifications List */}
+        {loading ? (
+          <View style={styles.emptyContainer}>
+            <Icon name="hourglass-outline" size={48} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.emptyText}>Loading notifications...</Text>
+          </View>
+        ) : notifications.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconBox}>
+              <Icon name="notifications-off" size={52} color="rgba(255,255,255,0.8)" />
             </View>
-          );
-        }}
-        ListEmptyComponent={(
-          <EmptyState
-            title="No notifications yet"
-            subtitle="Background updates will appear here after we fetch your accounts."
-            actionLabel="Refresh"
-            icon="notifications-outline"
-            onAction={() => { setRefreshing(true); loadFeed().finally(() => setRefreshing(false)); }}
+            <Text style={styles.emptyTitle}>No Notifications Yet</Text>
+            <Text style={styles.emptySubtitle}>
+              You'll receive notifications when your tracked accounts have changes in
+              followers or following counts
+            </Text>
+          </View>
+        ) : (
+          <FlatList
+            data={notifications}
+            renderItem={renderNotification}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#ffffff"
+              />
+            }
           />
         )}
-        contentContainerStyle={{ paddingBottom: 24 }}
-      />
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
+function formatTimestamp(timestamp: number): string {
+  const now = Date.now();
+  const diff = now - timestamp;
+
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+
+  const date = new Date(timestamp);
+  return date.toLocaleDateString();
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  headerBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1 },
-  headerIconBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 18, fontWeight: '800' },
-  groupLabel: { textAlign: 'center', marginTop: 12, marginBottom: 8, fontWeight: '700' },
-  notifCard: { marginHorizontal: 16, marginBottom: 10, padding: 12, borderRadius: 12, borderWidth: 1, flexDirection: 'row', alignItems: 'center' },
-  iconWrap: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  title: { fontWeight: '700' },
-  body: { marginTop: 4 },
-  time: { marginTop: 2, fontSize: 12 },
+  container: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: -0.5,
+  },
+  badge: {
+    backgroundColor: '#ef4444',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    minWidth: 24,
+    alignItems: 'center',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionsBar: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  actionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  listContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 30,
+  },
+  notificationCard: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
+  },
+  unreadCard: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderColor: 'rgba(74, 222, 128, 0.5)',
+    borderWidth: 2,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    padding: 16,
+  },
+  iconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  textContent: {
+    flex: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 6,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.9)',
+    flex: 1,
+  },
+  unreadTitle: {
+    color: '#ffffff',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ade80',
+  },
+  message: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.85)',
+    marginBottom: 12,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  changesGrid: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  changeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  changeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.9)',
+  },
+  changeDiff: {
+    fontSize: 12,
+    fontWeight: '800',
+    marginLeft: 'auto',
+  },
+  positiveChange: {
+    color: '#4ade80',
+  },
+  negativeChange: {
+    color: '#f87171',
+  },
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  timestamp: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '600',
+  },
+  deleteButton: {
+    marginLeft: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyIconBox: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#ffffff',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: '600',
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    lineHeight: 22,
+    fontWeight: '600',
+  },
 });
-
-

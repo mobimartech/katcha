@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 const API_KEYS = {
   ios: 'appl_bwytOJSXqaDnJTPBMncYDShpOIn',
-  android: 'YOUR_ANDROID_API_KEY', // Replace with your actual Android key
+  android: 'YOUR_ANDROID_API_KEY', // Replace with your actual Android key. 
 };
 
 export const initializeRevenueCat = async (userId) => {

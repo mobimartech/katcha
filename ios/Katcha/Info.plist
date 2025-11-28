@@ -22,12 +22,27 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.691913957787-tukkgqds27jc2qiuc9d9c0mojuibm7bt</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
-	<string>1.3</string>
+	<string>1.4</string>
 	<key>EnableRemoteNotifications</key>
 	<false/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-3144169908690020~3792225835</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>itms-apps</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -70,8 +85,17 @@
 	<string>Katcha may use speech recognition if needed for accessibility features, but does not record or store any spoken data.</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Social Tracker needs notification permission to alert you about follower changes and account updates.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>We use tracking data to provide personalized content and measure ad performance</string>
 	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
 	<true/>
+	<key>SKAdNetworkItems</key>
+	<array>
+		<dict>
+			<key>SKAdNetworkIdentifier</key>
+			<string>cstr6suwn9.skadnetwork</string>
+		</dict>
+	</array>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AntDesign.ttf</string>
@@ -118,20 +142,5 @@
 	<false/>
 	<key>aps-environment</key>
 	<string>production</string>
-	<key>CFBundleURLTypes</key>
-<array>
-  <dict>
-    <key>CFBundleTypeRole</key>
-    <string>Editor</string>
-    <key>CFBundleURLSchemes</key>
-    <array>
-      <!-- This is your REVERSED_CLIENT_ID from GoogleService-Info.plist -->
-      <string>com.googleusercontent.apps.691913957787-tukkgqds27jc2qiuc9d9c0mojuibm7bt</string>
-    </array>
-  </dict>
-</array>
-
-	<!-- <key>google_mobile_ads_json_raw</key>
-	<string>uiJpb3NfYXBwX2lkIjogImNhLWFwcC1wdWItMzE0NDE2OTkwODY5MDAyMH43NTE4NjE3MTU4IiwgImFuZHJvaWRfYXBwX2lkIjogImNhLWFwcC1wdWItMzE0NDE2OTkwODY5MDAyMH43NTE4NjE3MTU4In0=</string> -->
 </dict>
 </plist>

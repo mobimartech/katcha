@@ -1,695 +1,603 @@
 import BackgroundFetch from 'react-native-background-fetch';
-// @ts-ignore - react-native-push-notification doesn't have types
 import PushNotification from 'react-native-push-notification';
 import PushNotificationIOS from '@react-native-community/push-notification-ios';
-import { AppState, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { listTargets } from '../api/targets';
 import { getItem, setItem } from '../utils/storage.ts';
 import { getAccessToken } from '../utils/storage';
 import { refreshAccessTokenIfPossible } from '../api/auth.ts';
+import { saveNotification } from '../utils/notificationStorage';
 
-// Background fetch task ID
-const BACKGROUND_FETCH_TASK_ID = 'social-tracker-background-fetch';
-const HOURLY_NOTIFICATION_ID = 'social-tracker-hourly';
-const ANDROID_CHANNEL_ID = 'hourly-reminders';
+// Storage keys
+const TARGETS_SNAPSHOT_KEY = 'targets_snapshot';
+const LAST_CHECK_KEY = 'last_background_check';
+const ANDROID_CHANNEL_ID = 'change-notifications';
 
-// Global interval (minutes) for background fetch + scheduled notifications
-// Change this single value to adjust cadence across the app
-export const BACKGROUND_FETCH_INTERVAL_MIN = 5; // minutes
+// Background fetch interval: 2 times per day = every 12 hours
+export const BACKGROUND_FETCH_INTERVAL_MIN = 720; // 12 hours in minutes
 
-// Persisted meta so we only schedule once per login (or when interval changes)
-const NOTIFICATION_SCHEDULE_META_KEY = 'notifications_schedule_meta';
+interface TargetSnapshot {
+  id: number;
+  username: string;
+  platform: string;
+  followers: number;
+  following: number;
+  timestamp: number;
+}
 
-// App state monitoring
-let backgroundTaskId: number | null = null;
-let isBackgroundFetchActive = false;
-let scheduledNotifications: NodeJS.Timeout[] = [];
+interface ChangeDetected {
+  targetId: number;
+  username: string;
+  platform: string;
+  oldFollowers: number;
+  newFollowers: number;
+  oldFollowing: number;
+  newFollowing: number;
+  followersDiff: number;
+  followingDiff: number;
+}
 
 /**
- * Ensure iOS notification permissions are granted
+ * Save initial snapshot when a target is added
  */
-const ensureIOSNotificationPermissions = async () => {
-  if (Platform.OS !== 'ios') return;
+export const saveInitialSnapshot = async (target: any) => {
   try {
-    const settings = await new Promise<any>((resolve) => {
-      // checkPermissions uses callback signature in some versions
-      // @ts-ignore
-      PushNotificationIOS.checkPermissions((s: any) => resolve(s));
-    });
-    console.log('[BackgroundFetch] iOS current permissions:', settings);
-    const hasAlerts = !!(settings as any).alert;
-    const hasBadge = !!(settings as any).badge;
-    const hasSound = !!(settings as any).sound;
-    if (!hasAlerts || !hasBadge || !hasSound) {
-      console.log('[BackgroundFetch] Requesting iOS permissions (alerts/badge/sound)...');
-      const requested = await PushNotificationIOS.requestPermissions({ alert: true, badge: true, sound: true });
-      console.log('[BackgroundFetch] iOS permission request result:', requested);
+    console.log(
+      '[BackgroundFetch] Saving initial snapshot for:',
+      target.username
+    );
+
+    const snapshot: TargetSnapshot = {
+      id: target.id,
+      username: target.username,
+      platform: target.platform,
+      followers: target.followers || 0,
+      following: target.following || 0,
+      timestamp: Date.now(),
+    };
+
+    // Get existing snapshots
+    const existingRaw = await getItem(TARGETS_SNAPSHOT_KEY);
+    let snapshots: TargetSnapshot[] = [];
+
+    if (existingRaw) {
+      try {
+        snapshots = JSON.parse(existingRaw);
+      } catch (e) {
+        console.error('[BackgroundFetch] Error parsing snapshots:', e);
+      }
     }
-  } catch (permErr) {
-    console.warn('[BackgroundFetch] iOS permission check/request failed:', permErr);
+
+    // Add or update snapshot
+    const existingIndex = snapshots.findIndex((s) => s.id === target.id);
+    if (existingIndex >= 0) {
+      snapshots[existingIndex] = snapshot;
+    } else {
+      snapshots.push(snapshot);
+    }
+
+    await setItem(TARGETS_SNAPSHOT_KEY, JSON.stringify(snapshots));
+    console.log('[BackgroundFetch] ✅ Initial snapshot saved');
+  } catch (error) {
+    console.error('[BackgroundFetch] Error saving initial snapshot:', error);
   }
 };
 
 /**
- * Configure PushNotification with comprehensive debugging
+ * Get stored snapshots
  */
-const configurePushNotification = async () => {
-  console.log('[BackgroundFetch] ===== CONFIGURING PUSH NOTIFICATIONS =====');
-  
+const getStoredSnapshots = async (): Promise<TargetSnapshot[]> => {
   try {
-    // Request iOS permissions if needed
+    const raw = await getItem(TARGETS_SNAPSHOT_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw);
+  } catch (error) {
+    console.error('[BackgroundFetch] Error getting snapshots:', error);
+    return [];
+  }
+};
+
+/**
+ * Update snapshots with new data
+ */
+const updateSnapshots = async (newTargets: any[]) => {
+  try {
+    const snapshots: TargetSnapshot[] = newTargets.map((target) => ({
+      id: target.id,
+      username: target.username,
+      platform: target.platform,
+      followers: target.followers || 0,
+      following: target.following || 0,
+      timestamp: Date.now(),
+    }));
+
+    await setItem(TARGETS_SNAPSHOT_KEY, JSON.stringify(snapshots));
+    console.log('[BackgroundFetch] ✅ Snapshots updated');
+  } catch (error) {
+    console.error('[BackgroundFetch] Error updating snapshots:', error);
+  }
+};
+
+/**
+ * Compare old and new data to detect changes
+ */
+const detectChanges = (
+  oldSnapshots: TargetSnapshot[],
+  newTargets: any[]
+): ChangeDetected[] => {
+  const changes: ChangeDetected[] = [];
+
+  newTargets.forEach((newTarget) => {
+    const oldSnapshot = oldSnapshots.find((s) => s.id === newTarget.id);
+
+    if (!oldSnapshot) {
+      console.log('[BackgroundFetch] No old snapshot for:', newTarget.username);
+      return;
+    }
+
+    const newFollowers = newTarget.followers || 0;
+    const newFollowing = newTarget.following || 0;
+    const oldFollowers = oldSnapshot.followers || 0;
+    const oldFollowing = oldSnapshot.following || 0;
+
+    // Check if there are differences
+    if (newFollowers !== oldFollowers || newFollowing !== oldFollowing) {
+      const change: ChangeDetected = {
+        targetId: newTarget.id,
+        username: newTarget.username,
+        platform: newTarget.platform,
+        oldFollowers,
+        newFollowers,
+        oldFollowing,
+        newFollowing,
+        followersDiff: newFollowers - oldFollowers,
+        followingDiff: newFollowing - oldFollowing,
+      };
+
+      changes.push(change);
+      console.log(
+        '[BackgroundFetch] ✅ Change detected for @' + newTarget.username + ':',
+        {
+          followers: `${oldFollowers} → ${newFollowers} (${
+            change.followersDiff >= 0 ? '+' : ''
+          }${change.followersDiff})`,
+          following: `${oldFollowing} → ${newFollowing} (${
+            change.followingDiff >= 0 ? '+' : ''
+          }${change.followingDiff})`,
+        }
+      );
+    }
+  });
+
+  return changes;
+};
+
+/**
+ * Send notification for detected changes
+ */
+// Add this import at the top
+
+// Replace the sendChangeNotifications function:
+const sendChangeNotifications = async (changes: ChangeDetected[]) => {
+  if (changes.length === 0) {
+    console.log('[BackgroundFetch] No changes detected, no notifications sent');
+    return;
+  }
+
+  console.log(
+    `[BackgroundFetch] Sending notifications for ${changes.length} change(s)`
+  );
+
+  for (const change of changes) {
+    const notificationId = `change-${change.targetId}-${Date.now()}`;
+
+    // Build notification message
+    const followerChange =
+      change.followersDiff !== 0
+        ? `Followers: ${change.followersDiff >= 0 ? '+' : ''}${change.followersDiff}`
+        : '';
+    const followingChange =
+      change.followingDiff !== 0
+        ? `Following: ${change.followingDiff >= 0 ? '+' : ''}${change.followingDiff}`
+        : '';
+
+    const changes_text = [followerChange, followingChange]
+      .filter(Boolean)
+      .join(' | ');
+    const title = `📊 @${change.username} Updated`;
+    const message = changes_text;
+
+    // ✅ SAVE NOTIFICATION TO STORAGE
+    try {
+      await saveNotification({
+        title,
+        message,
+        type: 'target_change',
+        targetId: change.targetId,
+        username: change.username,
+        platform: change.platform,
+        changeData: {
+          followersDiff: change.followersDiff,
+          followingDiff: change.followingDiff,
+          oldFollowers: change.oldFollowers,
+          newFollowers: change.newFollowers,
+          oldFollowing: change.oldFollowing,
+          newFollowing: change.newFollowing,
+        },
+      });
+      console.log('[BackgroundFetch] ✅ Notification saved to storage');
+    } catch (saveError) {
+      console.error('[BackgroundFetch] Error saving notification:', saveError);
+    }
+
     if (Platform.OS === 'ios') {
       try {
-        console.log('[BackgroundFetch] Requesting iOS notification permissions...');
-        const requested = await PushNotificationIOS.requestPermissions({
-          alert: true,
-          badge: true,
-          sound: true,
+        PushNotificationIOS.addNotificationRequest({
+          id: notificationId,
+          title: title,
+          body: message,
+          sound: 'default',
+          badge: 1,
+          userInfo: {
+            type: 'target_change',
+            targetId: change.targetId,
+            username: change.username,
+            platform: change.platform,
+            change: change,
+          },
         });
-        console.log('[BackgroundFetch] ✅ iOS permission request result:', requested);
+        console.log(
+          '[BackgroundFetch] ✅ iOS notification sent for @' + change.username
+        );
       } catch (error) {
-        console.error('[BackgroundFetch] ❌ Error requesting iOS permissions:', error);
+        console.error('[BackgroundFetch] iOS notification error:', error);
       }
+    } else {
+      try {
+        PushNotification.localNotification({
+          channelId: ANDROID_CHANNEL_ID,
+          id: notificationId,
+          title: title,
+          message: message,
+          playSound: true,
+          soundName: 'default',
+          vibrate: true,
+          vibration: 300,
+          priority: 'high',
+          importance: 'high',
+          userInfo: {
+            type: 'target_change',
+            targetId: change.targetId,
+            username: change.username,
+            platform: change.platform,
+            change: change,
+          },
+        });
+        console.log(
+          '[BackgroundFetch] ✅ Android notification sent for @' +
+            change.username
+        );
+      } catch (error) {
+        console.error('[BackgroundFetch] Android notification error:', error);
+      }
+    }
+  }
+};
+
+/**
+ * Configure PushNotification
+ */
+const configurePushNotification = async () => {
+  console.log('[BackgroundFetch] Configuring push notifications...');
+
+  try {
+    if (Platform.OS === 'ios') {
+      const requested = await PushNotificationIOS.requestPermissions({
+        alert: true,
+        badge: true,
+        sound: true,
+      });
+      console.log('[BackgroundFetch] iOS permissions:', requested);
     }
 
     PushNotification.configure({
-      // (optional) Called when Token is generated (iOS and Android)
-      onRegister: function (token: any) {
-        console.log('[BackgroundFetch] PushNotification token received:', token);
+      onRegister: (token: any) => {
+        console.log('[BackgroundFetch] Push token:', token);
       },
-
-      // (required) Called when a remote is received or opened, or local notification is opened
-      onNotification: function (notification: any) {
-        console.log('[BackgroundFetch] Notification received in app:', notification);
-
-        // Required on iOS only
+      onNotification: (notification: any) => {
+        console.log('[BackgroundFetch] Notification received:', notification);
         if (notification.finish) {
           notification.finish('UIBackgroundFetchResultNoData');
         }
       },
-
-      // (optional) Called when Registered Action is pressed and invokeApp is false, if true onNotification will be called (Android)
-      onAction: function (notification: any) {
-        console.log('[BackgroundFetch] Notification action pressed:', notification);
-      },
-
-      // (optional) Called when the user fails to register for remote notifications. Typically occurs when APNS is having issues, or the device is a simulator. (iOS)
-      onRegistrationError: function(err: any) {
-        console.error('[BackgroundFetch] PushNotification registration error:', err);
-      },
-
-      // IOS ONLY (optional): default: all - Permissions to register.
       permissions: {
         alert: true,
         badge: true,
         sound: true,
       },
-
-      // Should the initial notification be popped automatically
-      // default: true
       popInitialNotification: true,
-
-      /**
-       * (optional) default: true
-       * - Specified if permissions (ios) and token (android and ios) will requested or not,
-       * - if not, you must call PushNotificationsHandler.requestPermissions() later
-       * - if you are not using remote notification or do not have Firebase installed, use this:
-       *     requestPermissions: Platform.OS === 'ios'
-       */
       requestPermissions: true,
     });
-    
-    // Ensure Android notification channel exists
+
     if (Platform.OS === 'android') {
       PushNotification.createChannel(
         {
           channelId: ANDROID_CHANNEL_ID,
-          channelName: 'Hourly Reminders',
-          channelDescription: 'Reminders and background updates every hour',
-          importance: 4, // Importance.HIGH
+          channelName: 'Account Changes',
+          channelDescription: 'Notifications when followed accounts change',
+          importance: 4,
           vibrate: true,
           soundName: 'default',
         },
-        (created: boolean) => console.log('[BackgroundFetch] Android channel created:', created)
+        (created: boolean) =>
+          console.log('[BackgroundFetch] Android channel created:', created)
       );
     }
 
-    console.log('[BackgroundFetch] PushNotification configured successfully');
-  
+    console.log('[BackgroundFetch] ✅ Push notifications configured');
   } catch (error) {
-    console.error('[BackgroundFetch] Error configuring PushNotification:', error);
+    console.error('[BackgroundFetch] Error configuring notifications:', error);
   }
 };
-/**
- * Schedule recurring notifications for background execution (2 times per day)
- */
-const scheduleRecurringNotifications = async () => {
-  console.log('[BackgroundFetch] Setting up twice-daily scheduled notifications...');
 
-  let targets: any[] = [];
+/**
+ * Main background fetch handler - fetches data, compares, and notifies
+ */
+const handleBackgroundFetch = async () => {
+  console.log('[BackgroundFetch] ===== STARTING BACKGROUND FETCH =====');
+  console.log('[BackgroundFetch] Timestamp:', new Date().toISOString());
+
   try {
+    // Check authentication
     const accessToken = await getAccessToken();
-    if (accessToken) {
-      targets = await fetchTargets();
-      console.log(`[BackgroundFetch] Found ${targets.length} targets for scheduled notifications`);
+    if (!accessToken) {
+      console.log('[BackgroundFetch] No access token, attempting refresh...');
+      const refreshed = await refreshAccessTokenIfPossible();
+      if (!refreshed) {
+        console.log('[BackgroundFetch] Cannot refresh token, aborting');
+        return;
+      }
     }
-  } catch (error) {
-    console.error('[BackgroundFetch] Error fetching targets:', error);
-  }
 
-  const validUsernames = targets
-    .filter((t: any) => t && typeof t.username === 'string' && t.username.length > 0)
-    .map((t: any) => `@${t.username}`);
-  const userNames = validUsernames.join(', ');
-  const title = validUsernames.length > 0
-    ? `${validUsernames.length} Account${validUsernames.length > 1 ? 's' : ''} Update`
-    : ' Test 1== Social Tracker Reminder';
-  const message = validUsernames.length > 0
-    ? `Test 1== Check updates for: ${userNames}`
-    : 'Track your accounts and check for new updates';
+    // 1. Get old snapshots
+    const oldSnapshots = await getStoredSnapshots();
+    console.log(
+      `[BackgroundFetch] Loaded ${oldSnapshots.length} old snapshot(s)`
+    );
 
-  try {
-    if (Platform.OS === 'ios' && validUsernames.length > 0) {
-      // Cleanup any previous 5-minute test schedules if present
-      await persistTargetsSnapshot(targets, Date.now());
+    // 2. Fetch current data
+    console.log('[BackgroundFetch] Fetching current targets...');
+    const currentTargets = await listTargets();
+    console.log(
+      `[BackgroundFetch] Fetched ${currentTargets.length} current target(s)`
+    );
 
-      // Clear any pending notifications with the same IDs
-      try {
-        // @ts-ignore
-        PushNotificationIOS.removePendingNotificationRequests([
-          `${HOURLY_NOTIFICATION_ID}-morning`,
-          `${HOURLY_NOTIFICATION_ID}-evening`,
-        ]);
-      } catch {}
-
-      // 🔸 9:00 AM notification
-      const morning = new Date();
-      morning.setHours(9, 0, 0, 0);
-      if (morning < new Date()) morning.setDate(morning.getDate() + 1); // if past, schedule for tomorrow
-
-      PushNotificationIOS.scheduleLocalNotification({
-        alertTitle: title,
-        alertBody: message,
-        fireDate: morning.toISOString(),
-        repeatInterval: 'day', // repeats daily
-        userInfo: {         id: `${HOURLY_NOTIFICATION_ID}-morning`,
-        type: 'background_fetch_twice_daily', period: 'morning' },
-      });
-
-      // 🔸 9:00 PM notification
-      const evening = new Date();
-      // evening.setHours(21, 0, 0, 0);
-      evening.setHours(17, 0, 0, 0);
-      if (evening < new Date()) evening.setDate(evening.getDate() + 1);
-
-      PushNotificationIOS.scheduleLocalNotification({
-        alertTitle: title,
-        alertBody: message,
-        fireDate: evening.toISOString(),
-        repeatInterval: 'day', // repeats daily
-        userInfo: { 
-          id: `${HOURLY_NOTIFICATION_ID}-evening`, // ✅ move id here
-          type: 'background_fetch_twice_daily', period: 'evening' },
-      });
-
-      console.log('[BackgroundFetch] ✅ iOS twice-daily notifications scheduled');
-    } else {
-      // ✅ Android supports custom repeat intervals
-      const BACKGROUND_FETCH_INTERVAL_HOURS = 12;
-      const BACKGROUND_FETCH_INTERVAL_MIN = BACKGROUND_FETCH_INTERVAL_HOURS * 60;
-      const firstFireDate = new Date(Date.now() + BACKGROUND_FETCH_INTERVAL_MIN * 60 * 1000);
-
-      PushNotification.localNotificationSchedule({
-        id: HOURLY_NOTIFICATION_ID,
-        channelId: ANDROID_CHANNEL_ID,
-        title,
-        message,
-        date: firstFireDate,
-        allowWhileIdle: true,
-        repeatType: 'time',
-        repeatTime: BACKGROUND_FETCH_INTERVAL_MIN * 60 * 1000, // 12 hours
-        playSound: true,
-        soundName: 'default',
-        vibrate: true,
-        vibration: 300,
-        importance: 'high',
-        priority: 'high',
-        userInfo: { type: 'background_fetch_twice_daily' },
-      });
-      console.log('[BackgroundFetch] ✅ Android twice-daily repeating notification scheduled');
+    if (currentTargets.length === 0) {
+      console.log('[BackgroundFetch] No targets to check');
+      return;
     }
-  } catch (error) {
-    console.error('[BackgroundFetch] ❌ Failed to schedule twice-daily notifications:', error);
-  }
-};
 
-/**
- * Clear all scheduled notifications
- */
-const clearScheduledNotifications = () => {
-  console.log('[BackgroundFetch] Clearing scheduled notifications...');
-  try {
-    PushNotificationIOS.cancelAllLocalNotifications();
-    console.log('[BackgroundFetch] All scheduled notifications cleared');
-  } catch (error) {
-    console.error('[BackgroundFetch] Error clearing notifications:', error);
-  }
-};
+    // 3. Detect changes
+    const changes = detectChanges(oldSnapshots, currentTargets);
+    console.log(`[BackgroundFetch] Detected ${changes.length} change(s)`);
 
-/**
- * Set up AppState monitoring for background execution
- */
-const setupAppStateMonitoring = () => {
-  console.log('[BackgroundFetch] Setting up AppState monitoring...');
-  
-  AppState.addEventListener('change', async (nextAppState) => {
-    console.log('[BackgroundFetch] AppState changed to:', nextAppState);
-    
-    if (nextAppState === 'background' || nextAppState === 'inactive') {
-      console.log('[BackgroundFetch] App going to background, starting background task...');
-      startBackgroundTask();
-      
-      // Schedule recurring notifications for background execution
-      console.log('[BackgroundFetch] Scheduling recurring notifications for background...');
-      await scheduleRecurringNotifications();
-      
-    } else if (nextAppState === 'active') {
-      console.log('[BackgroundFetch] App becoming active, ending background task...');
-      endBackgroundTask();
-      // Do not clear scheduled hourly notifications; keep them running
+    // 4. Send notifications for changes
+    if (changes.length > 0) {
+      await sendChangeNotifications(changes);
     }
-  });
-  
-  // Removed manual interval timer to avoid conflicts with OS scheduling
-};
 
-/**
- * Start background task
- */
-const startBackgroundTask = () => {
-  if (Platform.OS === 'ios') {
-    console.log('[BackgroundFetch] Starting iOS background task...');
-    // On iOS, we rely on BackgroundFetch.configure to handle background execution
-    // But we can also trigger immediate execution
-    setTimeout(() => {
-      console.log('[BackgroundFetch] Executing background fetch in background state...');
-      handleBackgroundFetch();
-    }, 1000);
-  }
-};
+    // 5. Update snapshots with new data
+    await updateSnapshots(currentTargets);
 
-/**
- * End background task
- */
-const endBackgroundTask = () => {
-  if (backgroundTaskId) {
-    console.log('[BackgroundFetch] Ending background task:', backgroundTaskId);
-    backgroundTaskId = null;
+    // 6. Update last check timestamp
+    await setItem(LAST_CHECK_KEY, Date.now().toString());
+
+    console.log('[BackgroundFetch] ===== BACKGROUND FETCH COMPLETED =====');
+  } catch (error) {
+    console.error('[BackgroundFetch] Error in background fetch:', error);
   }
 };
 
 /**
  * Initialize background fetch service
- * This should be called after successful login
  */
 export const initializeBackgroundFetch = async () => {
   console.log('[BackgroundFetch] Initializing background fetch service...');
 
   try {
-    // Check background fetch status first
-    const status = await getBackgroundFetchStatus();
-    console.log('[BackgroundFetch] Current status:', status);
-    
-    if (status === BackgroundFetch.STATUS_DENIED) {
-      console.warn('[BackgroundFetch] Background fetch is denied by system');
-    } else if (status === BackgroundFetch.STATUS_RESTRICTED) {
-      console.warn('[BackgroundFetch] Background fetch is restricted');
-    } else {
-      console.log('[BackgroundFetch] Background fetch is available');
-    }
-
-    // Configure PushNotification first
+    // Configure notifications
     await configurePushNotification();
-    await ensureIOSNotificationPermissions();
 
-    // Set up AppState monitoring
-    setupAppStateMonitoring();
+    // Configure BackgroundFetch
+    BackgroundFetch.configure(
+      {
+        minimumFetchInterval: BACKGROUND_FETCH_INTERVAL_MIN,
+        stopOnTerminate: false,
+        startOnBoot: true,
+        enableHeadless: true,
+        requiredNetworkType: BackgroundFetch.NETWORK_TYPE_ANY,
+        requiresCharging: false,
+        requiresDeviceIdle: false,
+        requiresBatteryNotLow: false,
+      },
+      async (taskId) => {
+        console.log('[BackgroundFetch] Task triggered:', taskId);
+        try {
+          await handleBackgroundFetch();
+        } catch (error) {
+          console.error('[BackgroundFetch] Task error:', error);
+        } finally {
+          BackgroundFetch.finish(taskId);
+        }
+      },
+      (error) => {
+        console.error('[BackgroundFetch] Configuration error:', error);
+      }
+    );
 
-    // Schedule the persistent repeating notification once (idempotent)
-    await scheduleRecurringNotifications();
-
-    // Configure background fetch
-    // BackgroundFetch.configure(
-    //   {
-    //     minimumFetchInterval: BACKGROUND_FETCH_INTERVAL_MIN,
-    //     stopOnTerminate: false, // Keep running when app is terminated
-    //     startOnBoot: true, // Start when device boots
-    //     enableHeadless: true, // Run without UI
-    //     requiredNetworkType: BackgroundFetch.NETWORK_TYPE_ANY, // Allow any network
-    //     requiresCharging: false, // Don't require charging
-    //     requiresDeviceIdle: false, // Don't require device idle
-    //     requiresBatteryNotLow: false, // Don't require good battery
-    //   },
-    //   async (taskId) => {
-    //     console.log('[BackgroundFetch] Task started:', taskId, 'AppState:', AppState.currentState);
-    //     isBackgroundFetchActive = true;
-        
-    //     try {
-    //       await handleBackgroundFetch();
-    //       console.log('[BackgroundFetch] Task completed successfully:', taskId);
-    //     } catch (error) {
-    //       console.error('[BackgroundFetch] Task failed:', taskId, error);
-    //     } finally {
-    //       isBackgroundFetchActive = false;
-    //       // Always finish the task
-    //       BackgroundFetch.finish(taskId);
-    //     }
-    //   },
-    //   (error) => {
-    //     console.error('[BackgroundFetch] Failed to start:', error);
-    //   }
-    // );
-
-    // Start the background fetch
     BackgroundFetch.start();
-    console.log('[BackgroundFetch] Background fetch service started');
-    
-    // Removed all debug timers / test triggers
-    
+    console.log('[BackgroundFetch] ✅ Background fetch service initialized');
   } catch (error) {
-    console.error('[BackgroundFetch] Failed to initialize:', error);
+    console.error('[BackgroundFetch] Initialization error:', error);
   }
 };
 
 /**
  * Stop background fetch service
- * This should be called on logout
  */
 export const stopBackgroundFetch = () => {
   console.log('[BackgroundFetch] Stopping background fetch service...');
-  
-  // Stop background fetch
   BackgroundFetch.stop();
-  
-  // Clear all local notifications
   PushNotification.cancelAllLocalNotifications();
-  
-  // Clear scheduled notifications
-  clearScheduledNotifications();
-  
-  console.log('[BackgroundFetch] Background fetch service stopped and notifications cleared');
+  console.log('[BackgroundFetch] ✅ Background fetch stopped');
 };
 
 /**
- * Handle background fetch task
- * Fetches targets and shows notifications
+ * Test background fetch manually
  */
-const handleBackgroundFetch = async () => {
-  const timestamp = new Date().toISOString();
-  console.log(`[BackgroundFetch] ===== STARTING BACKGROUND FETCH TASK =====`);
-  console.log(`[BackgroundFetch] Timestamp: ${timestamp}`);
-  console.log(`[BackgroundFetch] App State: ${AppState.currentState}`);
-  console.log(`[BackgroundFetch] Platform: ${Platform.OS}`);
+export const testBackgroundFetch = async () => {
+  console.log('[BackgroundFetch] Running manual test...');
+  await handleBackgroundFetch();
+};
+
+/**
+ * Force immediate fetch (clears cache)
+ */
+export const forceBackgroundFetch = async () => {
+  console.log('[BackgroundFetch] Forcing immediate fetch (clearing cache)...');
+
+  // Clear the targets cache first
+  try {
+    const { listTargets } = await import('../api/targets');
+    // @ts-ignore - accessing internal cache
+    if (listTargets.cache) {
+      // @ts-ignore
+      listTargets.cache = null;
+    }
+  } catch {}
+
+  await handleBackgroundFetch();
+};
+
+/**
+ * Simulate background with fake data change
+ */
+export const simulateBackgroundExecution = async () => {
+  console.log('[BackgroundFetch] Simulating data changes...');
 
   try {
-    // Log iOS platform info
-    if (Platform.OS === 'ios') {
-      console.log('[BackgroundFetch] Running on iOS platform');
+    // Get current snapshots
+    const snapshots = await getStoredSnapshots();
+
+    if (snapshots.length === 0) {
+      console.log(
+        '[BackgroundFetch] No snapshots to simulate changes. Add targets first.'
+      );
+      return;
     }
 
-    // Check if user is logged in
-    // const accessToken = await getAccessToken();
-    // if (!accessToken) {
-    //   console.log('[BackgroundFetch] No access token, skipping fetch');
-    //   return;
-    // }
+    // Modify first snapshot to simulate change
+    const modified = [...snapshots];
+    modified[0].followers += 100;
+    modified[0].following -= 5;
 
-    // console.log('[BackgroundFetch] Access token found, proceeding with API call...');
+    // Temporarily save modified snapshot
+    await setItem(TARGETS_SNAPSHOT_KEY, JSON.stringify(modified));
+    console.log('[BackgroundFetch] Modified snapshot for simulation');
 
-    // Fetch targets
-    // const targets = await fetchTargets();
-    // console.log(`[BackgroundFetch] API returned ${targets ? targets.length : 0} targets`);
-    
-    // if (targets && targets.length > 0) {
-    //   console.log(`[BackgroundFetch] Found ${targets.length} targets, showing user data notifications`);
-      
-    //   // Show notifications with real user data
-    //   await showUserDataNotification(targets);
-      
-    // } else {
-    //   console.log('[BackgroundFetch] No targets found, sending summary notification');
-    //   // await showUserDataNotification([]);
-    // }
-
-    // Do not send test notifications
-
+    // Now run fetch which will detect the "change"
+    await handleBackgroundFetch();
   } catch (error) {
-    console.error('[BackgroundFetch] Error in background fetch:', error);
-  }
-  
-  console.log(`[BackgroundFetch] ===== BACKGROUND FETCH TASK COMPLETED =====`);
-};
-
-/**
- * Show a test notification for debugging
- */
-const showTestNotification = async () => {
-  try {
-    console.log('[BackgroundFetch] ===== SENDING TEST NOTIFICATION =====');
-    
-    const notificationId = `test-${Date.now()}`;
-    const timestamp = new Date().toLocaleTimeString();
-    
-    console.log(`[BackgroundFetch] Notification ID: ${notificationId}`);
-    console.log(`[BackgroundFetch] Timestamp: ${timestamp}`);
-    console.log(`[BackgroundFetch] App State: ${AppState.currentState}`);
-    console.log(`[BackgroundFetch] Platform: ${Platform.OS}`);
-
-    
-    console.log('[BackgroundFetch] Test notification sent successfully with ID:', notificationId);
-    console.log('[BackgroundFetch] ===== TEST NOTIFICATION COMPLETED =====');
-    
-  } catch (error) {
-    console.error('[BackgroundFetch] Error sending test notification:', error);
+    console.error('[BackgroundFetch] Simulation error:', error);
   }
 };
 
 /**
- * Show notification with real user data
+ * Debug function - shows all stored data
  */
-const showUserDataNotification = async (targets: any[]) => {
+export const debugBackgroundFetch = async () => {
+  console.log('===== BACKGROUND FETCH DEBUG =====');
+
   try {
-    console.log('[BackgroundFetch] Sending user data notifications...');
-    console.log(`[BackgroundFetch] Platform: ${Platform.OS}, Targets: ${targets?.length || 0}`);
-    
-    if (targets && targets.length > 0) {
-      console.log(`[BackgroundFetch] Creating single notification for ${targets.length} tracked accounts...`);
-      
-      // Create a single notification with all user names
-      const validUsernames = targets
-        .filter((t: any) => t && typeof t.username === 'string' && t.username.length > 0)
-        .map((t: any) => `@${t.username}`);
-      const userNames = validUsernames.join(', ');
-      const notificationId = `users-update-${Date.now()}`;
-      const title = `${validUsernames.length} Account${validUsernames.length > 1 ? 's' : ''} Update`;
-      const message = ` Test 2 =N= Check updates for: ${userNames}`;
-      
-      console.log(`[BackgroundFetch] Notification - Title: "${title}"`);
-      console.log(`[BackgroundFetch] Notification - Message: "${message}"`);
-      
-      // For iOS, use PushNotificationIOS only
-      if (Platform.OS === 'ios') {
-        await persistTargetsSnapshot(targets, Date.now());
-        try {
-          // PushNotificationIOS.addNotificationRequest({
-          //   id: notificationId,
-          //   title: title,
-          //   body: message,
-          //   subtitle: 'Social Tracker',
-          //   sound: 'default',
-          //   badge: validUsernames.length,
-          //   userInfo: {
-          //     type: 'users_update',
-          //     target_count: validUsernames.length,
-          //     usernames: userNames,
-          //     timestamp: new Date().toISOString(),
-          //     records: targets.map((t: any) => ({ id: t.id, username: t.username, platform: t.platform, followers: t.followers ?? 0, following: t.following ?? 0 })),
-          //   },
-          // });
-          console.log(`[BackgroundFetch] ✅ iOS notification sent for ${validUsernames.length} users`);
-        } catch (iosError) {
-          console.error(`[BackgroundFetch] ❌ iOS notification error:`, iosError);
-        }
-      } else {
-        // Android fallback only on Android
-        try {
-          PushNotification.localNotification({
-            channelId: ANDROID_CHANNEL_ID,
-            id: notificationId,
-            title: title,
-            message: message,
-            playSound: true,
-            soundName: 'default',
-            vibrate: true,
-            vibration: 300,
-            priority: 'high',
-            importance: 'high',
-            userInfo: {
-              type: 'users_update',
-              target_count: validUsernames.length,
-              usernames: userNames,
-              timestamp: new Date().toISOString(),
-              records: targets.map((t: any) => ({ id: t.id, username: t.username, platform: t.platform, followers: t.followers ?? 0, following: t.following ?? 0 })),
-            },
-          });
-          console.log(`[BackgroundFetch] ✅ Android notification sent for ${validUsernames.length} users`);
-        } catch (fallbackError) {
-          console.error(`[BackgroundFetch] ❌ Android notification error:`, fallbackError);
-        }
-      }
-    } else {
-      // No targets found, send a summary notification
-      const notificationId = `summary-${Date.now()}`;
-      const title = 'Social Tracker Update';
-      const message = 'No tracked accounts found. Add some accounts to track!';
-      
-      console.log('[BackgroundFetch] Sending summary notification...');
-      
-      // For iOS only
-      if (Platform.OS === 'ios') {
-        try {
-          // PushNotificationIOS.addNotificationRequest({
-          //   id: notificationId,
-          //   title: title,
-          //   body: message,
-          //   sound: 'default',
-          //   badge: 1,
-          //   userInfo: {
-          //     type: 'summary',
-          //     target_count: 0,
-          //   },
-          // });
-          console.log('[BackgroundFetch] iOS summary notification sent');
-        } catch (iosError) {
-          console.error('[BackgroundFetch] iOS summary notification error:', iosError);
-        }
-      } else {
-        // Android only
-        try {
-          PushNotification.localNotification({
-            channelId: ANDROID_CHANNEL_ID,
-            id: notificationId,
-            title: title,
-            message: message,
-            playSound: true,
-            soundName: 'default',
-            vibrate: true,
-            vibration: 300,
-            userInfo: {
-              type: 'summary',
-              target_count: 0,
-            },
-          });
-          console.log('[BackgroundFetch] Android summary notification sent');
-        } catch (fallbackError) {
-          console.error('[BackgroundFetch] Android summary notification error:', fallbackError);
-        }
-      }
-    }
-    
-  } catch (error) {
-    console.error('[BackgroundFetch] Error sending user data notifications:', error);
-  }
-};
+    // 1. Check snapshots
+    const snapshots = await getStoredSnapshots();
+    console.log(`[Debug] Stored snapshots: ${snapshots.length}`);
+    snapshots.forEach((s) => {
+      console.log(
+        `  - @${s.username}: ${s.followers} followers, ${s.following} following`
+      );
+    });
 
-/**
- * Fetch targets from API
- * @returns Promise<Target[]> - Array of targets
- */
-const LAST_TARGETS_FETCH_KEY = 'last_targets_fetch_ms';
-const NOTIFICATIONS_FEED_KEY = 'notifications_feed';
-const TEN_MIN_MS = 10 * 60 * 1000;
+    // 2. Check last check time
+    const lastCheckRaw = await getItem(LAST_CHECK_KEY);
+    const lastCheck = lastCheckRaw ? new Date(Number(lastCheckRaw)) : null;
+    console.log(
+      `[Debug] Last check: ${lastCheck?.toLocaleString() || 'Never'}`
+    );
 
-/**
- * Persist a snapshot array of targets to the feed storage so UI can render it later
- */
-const persistTargetsSnapshot = async (targets: any[], timestampMs: number) => {
-  try {
-    const snapshotItems = (targets || []).map((t: any) => ({
-      id: `${t?.id ?? t?.username}-${timestampMs}`,
-      targetId: t?.id ?? 0,
-      username: t?.username ?? '',
-      platform: t?.platform ?? 'instagram',
-      followers: t?.followers ?? 0,
-      following: t?.following ?? 0,
-      fetchedAt: timestampMs,
-    }));
-    const existingRaw = await getItem(NOTIFICATIONS_FEED_KEY);
-    let existing: any[] = [];
-    if (existingRaw) {
-      try { existing = JSON.parse(existingRaw); } catch {}
-    }
-    const merged = [...snapshotItems, ...existing]
-      // Deduplicate by id
-      .filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index)
-      .slice(0, 300);
-    await setItem(NOTIFICATIONS_FEED_KEY, JSON.stringify(merged));
-    console.log(`[BackgroundFetch] Snapshot persisted: +${snapshotItems.length}, total ${merged.length}`);
-  } catch (persistErr) {
-    console.warn('[BackgroundFetch] Failed to persist snapshot feed:', persistErr);
-  }
-};
+    // 3. Check access token
+    const token = await getAccessToken();
+    console.log(`[Debug] Has access token: ${!!token}`);
 
-const fetchTargets = async () => {
-  try {
-    refreshAccessTokenIfPossible()
-
-    // Throttle: avoid hitting API if fetched within last 10 minutes
-    const lastFetchRaw = await getItem(LAST_TARGETS_FETCH_KEY);
-    const lastFetchMs = lastFetchRaw ? Number(lastFetchRaw) : 0;
-    const now = Date.now();
-    if (lastFetchMs && now - lastFetchMs < TEN_MIN_MS) {
-      const remaining = Math.ceil((TEN_MIN_MS - (now - lastFetchMs)) / 1000);
-      console.log(`[BackgroundFetch] Skipping fetch (throttled). Try again in ~${remaining}s`);
-      return [];
-    }
-
-    console.log('[BackgroundFetch] Fetching targets...');
-    const targets = await listTargets();
-    // Normalize and filter invalid entries
-    const validTargets = Array.isArray(targets)
-      ? targets.filter((t: any) => t && typeof t.username === 'string' && t.username.length > 0)
-      : [];
-    console.log(`[BackgroundFetch] Fetched ${validTargets.length} targets`);
-    // Mark fetch time on success to enforce throttle window
-    await setItem(LAST_TARGETS_FETCH_KEY, String(now));
-    // Persist snapshot for Notifications screen
-    await persistTargetsSnapshot(validTargets, now);
-    return validTargets;
-  } catch (error) {
-    console.error('[BackgroundFetch] Error fetching targets:', error);
-    return [];
-  }
-};
-
-
-/**
- * Check if background fetch is enabled
- * @returns Promise<boolean>
- */
-export const isBackgroundFetchEnabled = async (): Promise<boolean> => {
-  try {
+    // 4. Check background fetch status
     const status = await BackgroundFetch.status();
-    return status === BackgroundFetch.STATUS_AVAILABLE;
+    console.log(`[Debug] BackgroundFetch status: ${status}`);
+    console.log(
+      `[Debug] Status meaning:`,
+      {
+        0: 'RESTRICTED',
+        1: 'DENIED',
+        2: 'AVAILABLE',
+      }[status] || 'UNKNOWN'
+    );
+
+    // 5. Fetch current targets
+    console.log('[Debug] Fetching current targets...');
+    const targets = await listTargets();
+    console.log(`[Debug] Current targets: ${targets.length}`);
+    targets.forEach((t: any) => {
+      console.log(
+        `  - @${t.username}: ${t.followers} followers, ${t.following} following`
+      );
+    });
   } catch (error) {
-    console.error('[BackgroundFetch] Error checking status:', error);
-    return false;
+    console.error('[Debug] Error:', error);
   }
+
+  console.log('===== END DEBUG =====');
+};
+
+/**
+ * Check stored snapshots (utility)
+ */
+export const checkStoredData = async () => {
+  console.log('=== CHECKING STORED DATA ===');
+
+  try {
+    const snapshotsRaw = await getItem(TARGETS_SNAPSHOT_KEY);
+    const snapshots = snapshotsRaw ? JSON.parse(snapshotsRaw) : [];
+
+    console.log(`[Storage] Found ${snapshots.length} snapshots`);
+    snapshots.forEach((snap: TargetSnapshot) => {
+      console.log(
+        `  - @${snap.username}: ${snap.followers} followers, ${snap.following} following`
+      );
+    });
+
+    const lastCheckRaw = await getItem(LAST_CHECK_KEY);
+    const lastCheck = lastCheckRaw ? new Date(Number(lastCheckRaw)) : null;
+    console.log(
+      `[Storage] Last check: ${lastCheck?.toLocaleString() || 'Never'}`
+    );
+  } catch (error) {
+    console.error('[Storage] Error checking data:', error);
+  }
+
+  console.log('=== END STORED DATA ===');
 };
 
 /**
  * Get background fetch status
- * @returns Promise<number> - Status code
  */
 export const getBackgroundFetchStatus = async (): Promise<number> => {
   try {
@@ -699,109 +607,3 @@ export const getBackgroundFetchStatus = async (): Promise<number> => {
     return BackgroundFetch.STATUS_DENIED;
   }
 };
-
-
-/**
- * Test manual background fetch (for debugging)
- */
-export const testBackgroundFetch = async () => {
-  console.log('[BackgroundFetch] Testing manual background fetch...');
-  
-  try {
-    await handleBackgroundFetch();
-    console.log('[BackgroundFetch] Manual background fetch completed');
-  } catch (error) {
-    console.error('[BackgroundFetch] Manual background fetch failed:', error);
-  }
-};
-
-/**
- * Debug function to check all settings
- */
-export const debugBackgroundFetch = async () => {
-  console.log('=== BACKGROUND FETCH COMPREHENSIVE DEBUG INFO ===');
-  
-  try {
-    // 1. Check background fetch status
-    const status = await getBackgroundFetchStatus();
-    console.log('[Debug] Background fetch status:', status);
-    console.log('[Debug] Background fetch status text:', 
-      status === 0 ? 'DENIED' : 
-      status === 1 ? 'RESTRICTED' : 
-      status === 2 ? 'AVAILABLE' : 'UNKNOWN');
-    
-    // 2. Check access token
-    const accessToken = await getAccessToken();
-    console.log('[Debug] Access token exists:', !!accessToken);
-    if (accessToken) {
-      console.log('[Debug] Access token length:', accessToken.length);
-    }
-    
-    // 3. Check platform
-    console.log('[Debug] Platform:', Platform.OS);
-    
-    // 4. Check app state
-    console.log('[Debug] Current app state:', AppState.currentState);
-    
-    // 5. Test API call
-    console.log('[Debug] Testing API call...');
-    try {
-    //   const targets = await listTargets();
-      const targets = [{}];
-      console.log('[Debug] API returned targets:', targets.length);
-      if (targets.length > 0) {
-        console.log('[Debug] First target:', targets[0]);
-      }
-    } catch (error) {
-      console.error('[Debug] API call failed:', error);
-    }
-    
-    // 6. Test notification permissions and send test
-    console.log('[Debug] Testing notification...');
-    
-    // 7. Force immediate background fetch
-    console.log('[Debug] Forcing immediate background fetch...');
-    await handleBackgroundFetch();
-    
-    // 8. Check if background fetch is configured
-    console.log('[Debug] Background fetch active:', isBackgroundFetchActive);
-    console.log('[Debug] Background task ID:', backgroundTaskId);
-    
-  } catch (error) {
-    console.error('[Debug] Debug check failed:', error);
-  }
-  
-  console.log('=== END COMPREHENSIVE DEBUG INFO ===');
-};
-
-/**
- * Force immediate background fetch execution (for testing)
- */
-export const forceBackgroundFetch = async () => {
-  console.log('[BackgroundFetch] Forcing immediate background fetch execution...');
-  await handleBackgroundFetch();
-};
-
-/**
- * Simulate background execution (for testing)
- */
-export const simulateBackgroundExecution = async () => {
-  console.log('[BackgroundFetch] Simulating background execution...');
-  console.log('[BackgroundFetch] Current AppState:', AppState.currentState);
-  
-  // Force background fetch regardless of app state
-  await handleBackgroundFetch();
-  
-  // Also trigger the background fetch callback manually
-  console.log('[BackgroundFetch] Manually triggering background fetch callback...');
-  isBackgroundFetchActive = true;
-  try {
-    await handleBackgroundFetch();
-    console.log('[BackgroundFetch] Manual background execution completed');
-  } catch (error) {
-    console.error('[BackgroundFetch] Manual background execution failed:', error);
-  } finally {
-    isBackgroundFetchActive = false;
-  }
-};
-

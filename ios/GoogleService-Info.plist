@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>691913957787-tukkgqds27jc2qiuc9d9c0mojuibm7bt.apps.googleusercontent.com</string>
+	<string>691913957787-ftdlnc0pi28d87fs09i7a8l3ppoh5ts5.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.691913957787-tukkgqds27jc2qiuc9d9c0mojuibm7bt</string>
+	<string>com.googleusercontent.apps.691913957787-ftdlnc0pi28d87fs09i7a8l3ppoh5ts5</string>
 	<key>ANDROID_CLIENT_ID</key>
 	<string>691913957787-a4c9n71hdn4qvb8avc6bth5i4c4fcb2i.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
@@ -15,7 +15,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.mni.social.follower.tracker</string>
+	<string>com.mni.katcha.social.follower.tracker</string>
 	<key>PROJECT_ID</key>
 	<string>katcha-c9a23</string>
 	<key>STORAGE_BUCKET</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:691913957787:ios:350952baaaacb178fa013e</string>
+	<string>1:691913957787:ios:8630bfc6a0b13b10fa013e</string>
 </dict>
 </plist>

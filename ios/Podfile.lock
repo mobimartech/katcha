@@ -1504,6 +1504,30 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
+  - react-native-blur (4.4.1):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-hermes
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - react-native-safe-area-context (5.6.2):
     - DoubleConversion
     - glog
@@ -2085,6 +2109,8 @@ PODS:
   - RNPurchases (8.10.0):
     - PurchasesHybridCommon (= 13.31.0)
     - React-Core
+  - RNRate (1.2.12):
+    - React-Core
   - RNReanimated (3.19.4):
     - DoubleConversion
     - glog
@@ -2410,6 +2436,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - "react-native-blur (from `../node_modules/@react-native-community/blur`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
   - react-native-view-shot (from `../node_modules/react-native-view-shot`)
@@ -2457,6 +2484,7 @@ DEPENDENCIES:
   - RNIap (from `../node_modules/react-native-iap`)
   - RNPermissions (from `../node_modules/react-native-permissions`)
   - RNPurchases (from `../node_modules/react-native-purchases`)
+  - RNRate (from `../node_modules/react-native-rate`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNShare (from `../node_modules/react-native-share`)
@@ -2580,6 +2608,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-blur:
+    :path: "../node_modules/@react-native-community/blur"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-slider:
@@ -2674,6 +2704,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-permissions"
   RNPurchases:
     :path: "../node_modules/react-native-purchases"
+  RNRate:
+    :path: "../node_modules/react-native-rate"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -2756,6 +2788,7 @@ SPEC CHECKSUMS:
   React-logger: 44e070aefe084568c02b544b9d7d436703be1a47
   React-Mapbuffer: ed1f528261013e46790379cc6727b8005e169a67
   React-microtasksnativemodule: da563fd4cb7ecc23f67b5f15b92dfe94a9791e2d
+  react-native-blur: d179f9d0898977578a42b0b536d4df57b8d7bd21
   react-native-safe-area-context: 52ff5621a01995b6984f4be90dcd216abf44e710
   react-native-slider: 89552e4381bc34e492a7b53be7ec78221bbc9896
   react-native-view-shot: 6b7ed61d77d88580fed10954d45fad0eb2d47688
@@ -2805,6 +2838,7 @@ SPEC CHECKSUMS:
   RNIap: f193da865e819a25638d29c845629e17a943590c
   RNPermissions: 8a64f52871d153da43f06d20d78f29199c6ac0b8
   RNPurchases: 0817e37411db801f6bf5992eb107d83f55c1595f
+  RNRate: ef3bcff84f39bb1d1e41c5593d3eea4aab2bd73a
   RNReanimated: 92a1b1cdfc46bddf0a9dc80183145a17625b6f3a
   RNScreens: 8cb433fe2ca0eaa6b33f4356679b17bc6e4d84bc
   RNShare: 0634507a2fa2f608c36941382547952b246b4eac

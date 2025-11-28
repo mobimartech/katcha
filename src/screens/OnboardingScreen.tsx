@@ -8,8 +8,10 @@ import {
   Image,
   Animated,
   PanResponder,
+  Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Rate, { AndroidMarket } from 'react-native-rate';
 import { setOnboardingComplete } from '../utils/onboarding';
 
 const { width, height } = Dimensions.get('window');
@@ -67,13 +69,35 @@ export default function OnboardingScreen({ navigation }) {
     });
   };
 
+  const showInAppReview = () => {
+    const options = {
+      AppleAppID: '6755113314', // Replace with your Apple App ID
+      GooglePackageName: 'YOUR_PACKAGE_NAME', // Replace with your package name
+      preferInApp: true,
+      openAppStoreIfInAppFails: false,
+    };
+
+    Rate.rate(options, (success, errorMessage) => {
+      if (success) {
+        // Review flow finished successfully
+        console.log('Review flow completed');
+      }
+      // Continue to the last slide regardless of success/failure
+      animateTransition(currentIndex + 1);
+    });
+  };
+
   const handleContinue = async () => {
     if (currentIndex < slides.length - 1) {
-      animateTransition(currentIndex + 1);
+      // Show in-app review before the last onboarding page (when moving from slide 3 to 4)
+      if (currentIndex === 2) {
+        showInAppReview();
+      } else {
+        animateTransition(currentIndex + 1);
+      }
     } else {
       await setOnboardingComplete();
-      // navigation.replace('Login');
-      navigation.replace('MainTabs');
+      navigation.replace('Subscription');
     }
   };
 
@@ -85,7 +109,11 @@ export default function OnboardingScreen({ navigation }) {
       onPanResponderRelease: (_, gestureState) => {
         if (gestureState.dx < -50 && currentIndex < slides.length - 1) {
           // Swipe left - next slide
-          animateTransition(currentIndex + 1);
+          if (currentIndex === 2) {
+            showInAppReview();
+          } else {
+            animateTransition(currentIndex + 1);
+          }
         } else if (gestureState.dx > 50 && currentIndex > 0) {
           // Swipe right - previous slide
           animateTransition(currentIndex - 1);
@@ -172,6 +200,8 @@ export default function OnboardingScreen({ navigation }) {
     </LinearGradient>
   );
 }
+
+// ... (styles remain the same)
 
 const styles = StyleSheet.create({
   container: {

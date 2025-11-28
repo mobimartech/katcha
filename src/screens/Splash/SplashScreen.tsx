@@ -5,17 +5,16 @@ import { getOnboardingComplete } from '../../utils/onboarding';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
 
 export default function SplashScreen({ navigation }) {
-  const [isPremium, setIsPremium] = useState(false);
-
   const checkPremiumStatus = async () => {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       const premium =
-        typeof customerInfo.entitlements.active['premium'] !== 'undefined';
-      setIsPremium(premium);
+        typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+      console.log('Premium status:', premium);
+      return premium; // Return the value instead of setting state
     } catch (error) {
-      setIsPremium(false);
       console.error('Failed to check premium status:', error);
+      return false; // Return false on error
     }
   };
 
@@ -23,19 +22,23 @@ export default function SplashScreen({ navigation }) {
     const checkAppStatus = async () => {
       try {
         const hasCompletedOnboarding = await getOnboardingComplete();
-        checkPremiumStatus();
+        const isPremium = await checkPremiumStatus(); // Wait for the result
+
         setTimeout(() => {
           if (!hasCompletedOnboarding) {
             navigation.replace('Onboarding');
           } else {
-            if (isPremium === false) {
-              navigation.replace('Subscription');
-            } else {
+            if (isPremium) {
+              console.log('Navigating to MainTabs - User is premium');
               navigation.replace('MainTabs');
+            } else {
+              console.log('Navigating to Subscription - User is not premium');
+              navigation.replace('Subscription');
             }
           }
         }, 1000);
       } catch (error) {
+        console.error('Error in checkAppStatus:', error);
         navigation.replace('Onboarding');
       }
     };

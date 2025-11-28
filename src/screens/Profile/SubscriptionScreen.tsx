@@ -21,9 +21,18 @@ import Purchases, { PurchasesPackage } from 'react-native-purchases';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAppTheme } from '../../theme/ThemeProvider';
 import variables from '../../../constants/variables.js';
+import { setIsLoggedIn } from '../../utils/auth.ts';
+import { registerForPushNotifications } from '../../notifications/messaging';
+import {
+  initializeBackgroundFetch,
+  testBackgroundFetch,
+} from '../../services/BackgroundFetchService';
+import { updateSubscription } from '../../api/targets.ts';
+import auth from '@react-native-firebase/auth'; // Add this import at the top
 
 const { width, height } = Dimensions.get('window');
-
+const isSmallDevice = width < 375;
+const isMediumDevice = width >= 375 && width < 768;
 const DEFAULT_PACKAGES = {
   weekly: {
     price: '$4.99',
@@ -77,7 +86,7 @@ export default function SubscriptionScreen(): React.ReactElement {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       const premium =
-        typeof customerInfo.entitlements.active['premium'] !== 'undefined';
+        typeof customerInfo.entitlements.active['pro'] !== 'undefined';
       setIsPremium(premium);
     } catch (error) {
       console.error('Failed to check premium status:', error);
@@ -154,13 +163,17 @@ export default function SubscriptionScreen(): React.ReactElement {
 
       const { customerInfo } = await Purchases.purchasePackage(selectedPackage);
 
-      if (typeof customerInfo.entitlements.active['premium'] !== 'undefined') {
+      if (typeof customerInfo.entitlements.active['pro'] !== 'undefined') {
         setIsPremium(true);
-        Alert.alert(
-          'Success! 🎉',
-          'Welcome to Katcha Premium! You now have unlimited access.',
-          [{ text: 'Continue', onPress: () => navigation.goBack() }]
-        );
+
+     
+
+        const result = await updateSubscription(selectedPlan);
+        await setIsLoggedIn(true);
+        await initializeBackgroundFetch();
+        void registerForPushNotifications();
+        await testBackgroundFetch();
+        navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
       }
     } catch (error: any) {
       console.error('❌ Purchase failed:', error);
@@ -194,7 +207,7 @@ export default function SubscriptionScreen(): React.ReactElement {
 
       const customerInfo = await Purchases.restorePurchases();
       const premium =
-        typeof customerInfo.entitlements.active['premium'] !== 'undefined';
+        typeof customerInfo.entitlements.active['pro'] !== 'undefined';
 
       if (premium) {
         setIsPremium(true);
@@ -290,7 +303,12 @@ export default function SubscriptionScreen(): React.ReactElement {
             {/* Close Button */}
             <TouchableOpacity
               style={styles.closeButton}
-              onPress={() => (navigation as any).navigate('MainTabs', {})}
+              onPress={() => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'MainTabs' }],
+                });
+              }}
             >
               <Icon name="close" size={24} color="#FFF" />
             </TouchableOpacity>
@@ -407,7 +425,7 @@ export default function SubscriptionScreen(): React.ReactElement {
             {/* Continue Button */}
             <TouchableOpacity
               onPress={handlePurchase}
-              disabled={loading || isPremium || useDefaultPackages}
+              disabled={loading  || useDefaultPackages}
               activeOpacity={0.8}
               style={styles.subscribeButtonWrapper}
             >
@@ -421,13 +439,22 @@ export default function SubscriptionScreen(): React.ReactElement {
                 {loading ? (
                   <ActivityIndicator color="#5B68E8" size="small" />
                 ) : (
-                  <Text style={styles.subscribeButtonText}>
-                    {isPremium
-                      ? 'Already Premium ✓'
-                      : useDefaultPackages
-                      ? 'Service Unavailable'
-                      : 'Continue'}
+                  // <Text style={styles.subscribeButtonText}>
+                  //   {isPremium
+                  //     ? 'Already Premium ✓'
+                  //     : useDefaultPackages
+                  //     ? 'Service Unavailable'
+                  //     : 'Continue'}
+                  // </Text>
+
+
+
+   <Text style={styles.subscribeButtonText}>
+                    {'Continue'}
                   </Text>
+
+
+
                 )}
               </View>
             </TouchableOpacity>
@@ -478,7 +505,14 @@ export default function SubscriptionScreen(): React.ReactElement {
                 </TouchableOpacity>
               </View>
             )}
-
+            <View style={styles.disclaimerContainer}>
+              <Text style={styles.disclaimerText}>
+                Once you subscribe, the subscription will commence immediately.
+                You have the option to cancel at any time. Subscriptions will be
+                automatically renewed unless you disable auto-renewal at least
+                24 hours prior to the end of the current period.
+              </Text>
+            </View>
             {/* Premium Badge */}
             {isPremium && (
               <View style={styles.premiumBadge}>
@@ -509,10 +543,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  contentWrapper: {
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? 20 : 10,
-  },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -538,59 +569,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 32,
   },
-  logoWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 24,
-    backgroundColor: '#FFF',
-    padding: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 10,
-  },
+
   logo: {
     width: '100%',
     height: '100%',
     borderRadius: 16,
   },
-  mainTitle: {
-    fontSize: 36,
-    fontWeight: '800',
-    color: '#FFF',
-    textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  mainSubtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 26,
-    fontWeight: '500',
-  },
-  benefitsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 40,
-  },
-  benefitBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
-  },
-  benefitLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFF',
-  },
+
   offlineNotice: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -610,43 +595,11 @@ const styles = StyleSheet.create({
   plansSection: {
     marginBottom: 32,
   },
-  planSectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#FFF',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  plansContainer: {
-    flexDirection: 'row',
-    gap: 16,
-  },
+
   planWrapper: {
     flex: 1,
   },
-  planCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 20,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    height: 200,
-    justifyContent: 'center',
-    position: 'relative',
-  },
-  planCardSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    borderColor: '#FFF',
-    shadowColor: '#FFF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  planCardDisabled: {
-    opacity: 0.6,
-  },
+
   selectedBadge: {
     position: 'absolute',
     top: 12,
@@ -670,65 +623,18 @@ const styles = StyleSheet.create({
     color: '#5B68E8',
     letterSpacing: 0.5,
   },
-  planLabel: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#FFF',
-    marginBottom: 12,
-  },
-  planPrice: {
-    fontSize: 32,
-    fontWeight: '500',
-    color: '#FFF',
-    marginBottom: 8,
-    letterSpacing: -1,
-  },
-  planDescription: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    textAlign: 'center',
-    fontWeight: '600',
-  },
+
   subscribeButtonWrapper: {
     marginBottom: 20,
   },
-  subscribeButton: {
-    backgroundColor: '#FFF',
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  subscribeButtonDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    shadowOpacity: 0.1,
-  },
-  subscribeButtonText: {
-    color: '#5B68E8',
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
+
   footerLinksRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
   },
-  footerLink: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  footerLinkText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFF',
-  },
+
   footerDivider: {
     width: 1,
     height: 16,
@@ -754,5 +660,175 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginLeft: 8,
     color: '#FFF',
+  },
+  disclaimerContainer: {
+    paddingHorizontal: 16,
+  },
+
+  contentWrapper: {
+    paddingHorizontal: isSmallDevice ? 16 : 24,
+    paddingTop: Platform.OS === 'android' ? 20 : 10,
+  },
+
+  logoWrapper: {
+    width: isSmallDevice ? 80 : 100,
+    height: isSmallDevice ? 80 : 100,
+    borderRadius: 24,
+    backgroundColor: '#FFF',
+    padding: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+
+  mainTitle: {
+    fontSize: isSmallDevice ? 28 : 36,
+    fontWeight: '800',
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: -0.5,
+  },
+
+  mainSubtitle: {
+    fontSize: isSmallDevice ? 16 : 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    marginBottom: isSmallDevice ? 24 : 32,
+    lineHeight: 26,
+    fontWeight: '500',
+    paddingHorizontal: isSmallDevice ? 8 : 0,
+  },
+
+  benefitsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap', // Allow wrapping
+    gap: isSmallDevice ? 8 : 12,
+    marginBottom: isSmallDevice ? 24 : 40,
+    paddingHorizontal: isSmallDevice ? 4 : 0,
+  },
+
+  benefitBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: isSmallDevice ? 12 : 16,
+    paddingVertical: isSmallDevice ? 8 : 10,
+    borderRadius: 20,
+    gap: 6,
+    minWidth: isSmallDevice ? 90 : 'auto', // Prevent too narrow badges
+  },
+
+  benefitLabel: {
+    fontSize: isSmallDevice ? 11 : 13,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+
+  planSectionTitle: {
+    fontSize: isSmallDevice ? 18 : 20,
+    fontWeight: '700',
+    color: '#FFF',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+
+  plansContainer: {
+    flexDirection: 'row', // Stack on very small screens
+    gap: 16,
+  },
+
+  planCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 20,
+    padding: isSmallDevice ? 16 : 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+    minHeight: width < 375 ? 160 : 200, // Responsive height
+    justifyContent: 'center',
+    position: 'relative',
+  },
+
+  planLabel: {
+    fontSize: isSmallDevice ? 24 : 28,
+    fontWeight: '700',
+    color: '#FFF',
+    marginBottom: 12,
+  },
+
+  planPrice: {
+    fontSize: isSmallDevice ? 28 : 32,
+    fontWeight: '500',
+    color: '#FFF',
+    marginBottom: 8,
+    letterSpacing: -1,
+  },
+
+  planDescription: {
+    fontSize: isSmallDevice ? 12 : 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+
+  subscribeButton: {
+    backgroundColor: '#FFF',
+    height: isSmallDevice ? 54 : 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+
+  subscribeButtonText: {
+    color: '#5B68E8',
+    fontSize: isSmallDevice ? 16 : 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+
+  footerLink: {
+    paddingHorizontal: isSmallDevice ? 12 : 16,
+    paddingVertical: 8,
+  },
+
+  footerLinkText: {
+    fontSize: isSmallDevice ? 12 : 14,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+
+  disclaimerText: {
+    fontSize: isSmallDevice ? 10 : 11,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'justify',
+    lineHeight: isSmallDevice ? 14 : 16,
+    fontWeight: '400',
+  },
+  planCardSelected: {
+    borderColor: '#FFFFFF', // White border for selected plan
+    borderWidth: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)', // Slightly brighter background
+    shadowColor: '#FFF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+
+  planCardDisabled: {
+    opacity: 0.6,
+  },
+
+  subscribeButtonDisabled: {
+    opacity: 0.6,
   },
 });

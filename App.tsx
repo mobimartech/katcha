@@ -13,9 +13,10 @@ export default function App(): React.ReactElement {
     return unsubscribe;
   }, []);
   useEffect(() => {
+    // initializeRevenueCat('appl_bwytOJSXqaDnJTPBMncYDShpOIn');
     initializeRevenueCat('appl_bwytOJSXqaDnJTPBMncYDShpOIn');
 
-    // Initialize API config from provided Postman collection values for dev
+    // Initialize API config from provided Postman collection values for dev.  /appl_bwytOJSXqaDnJTPBMncYDShpOIn
     void (async () => {
       await setBaseUrl('https://katchaapp.org');
       await setApiCredentials({

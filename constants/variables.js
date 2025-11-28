@@ -9,14 +9,14 @@ export default {
     app_sub: 'Katcha',
     email: '',
     SplashName: 'Splash',
-    slogan: 'Powered by @ MNI TECH',
+    slogan: '@2026',
     version: '1.0',
 
     // Ad Configuration
     USE_TEST_ADS: false, // Set to false for production
 
-    admobBanner: 'ca-app-pub-9723484343245567/8074930860',
-    admobInterstitial: 'ca-app-pub-9723484343245567/4187656745',
+    admobBanner: 'ca-app-pub-9723484343254667/80749306860',
+    admobInterstitial: 'ca-app-pub-9723484343254667/4187656745',
 
     // AdMob Production IDs - Same for both Android and iOS
     admobBannerAndroid: 'ca-app-pub-9723484343245567/8074930860', // Production Banner ID

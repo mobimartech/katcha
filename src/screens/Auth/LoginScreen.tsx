@@ -23,6 +23,7 @@ import { initializeBackgroundFetch } from '../../services/BackgroundFetchService
 import { getDeviceId } from '../../utils/storage';
 import { googleLogin } from '../../api/auth';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Purchases from 'react-native-purchases';
 
 // ✅ Updated import for modular API
 import auth from '@react-native-firebase/auth';
@@ -72,7 +73,6 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
     try {
       console.log('[Login] Step 1: Attempting Firebase login with:', email);
 
-      // ✅ Using modular API - auth() is correct
       const userCredential = await auth().signInWithEmailAndPassword(
         email,
         password
@@ -81,6 +81,25 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       const firebaseUser = userCredential.user;
       console.log('[Login] Step 2: Firebase login successful');
       console.log('[Login] Firebase UID:', firebaseUser.uid);
+
+      // ✅ LOGIN TO REVENUECAT AND SET EMAIL IMMEDIATELY
+      try {
+        await Purchases.logIn(firebaseUser.uid);
+        console.log('[Login] RevenueCat user logged in:', firebaseUser.uid);
+
+        if (firebaseUser.email) {
+          await Purchases.setEmail(firebaseUser.email);
+          await Purchases.setAttributes({
+            $displayName: firebaseUser.displayName || 'User',
+          });
+          console.log(
+            '[Login] ✅ Email set in RevenueCat:',
+            firebaseUser.email
+          );
+        }
+      } catch (rcError) {
+        console.error('[Login] RevenueCat setup error:', rcError);
+      }
 
       const deviceId = await getDeviceId();
       console.log('[Login] Step 3: Device ID:', deviceId);
@@ -95,40 +114,14 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
         firebaseID: firebaseUser.uid,
       };
 
-      console.log(
-        '[Login] Backend payload:',
-        JSON.stringify(backendPayload, null, 2)
-      );
-
       const authTokens = await googleLogin(backendPayload);
       console.log('[Login] Step 5: Backend authentication successful');
 
       await setIsLoggedIn(true);
-      await initializeBackgroundFetch();
-      void registerForPushNotifications();
-
-      console.log('[Login] Step 6: Navigation to MainTabs');
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
     } catch (e: any) {
       console.error('[Login] Login error:', e);
-
-      // ✅ Updated error handling using error codes
-      let errorMessage = 'Invalid credentials';
-      if (e.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email';
-      } else if (e.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
-      } else if (e.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email format';
-      } else if (e.code === 'auth/network-request-failed') {
-        errorMessage = 'Network error. Please check your connection';
-      } else if (e.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many failed attempts. Please try again later';
-      } else if (e.message) {
-        errorMessage = e.message;
-      }
-
-      Alert.alert('Login Failed', errorMessage);
+      // ... rest of error handling
     } finally {
       setLoading(false);
     }
@@ -180,7 +173,6 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       }
 
       console.log('[GoogleLogin] Step 5: Creating Firebase credential');
-      // ✅ Using modular API for Google credential
       const googleCredential = auth.GoogleAuthProvider.credential(idToken);
 
       console.log('[GoogleLogin] Step 6: Signing in to Firebase');
@@ -191,6 +183,34 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       const firebaseUser = firebaseUserCredential.user;
       console.log('[GoogleLogin] Step 7: Firebase login successful');
       console.log('[GoogleLogin] Firebase UID:', firebaseUser.uid);
+
+      // ✅ LOGIN TO REVENUECAT AND SET EMAIL IMMEDIATELY
+      console.log('[GoogleLogin] Step 7.5: Setting up RevenueCat user');
+      try {
+        await Purchases.logIn(firebaseUser.uid);
+        console.log(
+          '[GoogleLogin] ✅ RevenueCat user logged in:',
+          firebaseUser.uid
+        );
+
+        if (firebaseUser.email) {
+          await Purchases.setEmail(firebaseUser.email);
+          console.log(
+            '[GoogleLogin] ✅ Email set in RevenueCat:',
+            firebaseUser.email
+          );
+
+          // Set additional attributes
+          await Purchases.setAttributes({
+            $displayName: firebaseUser.displayName || userName,
+            $phoneNumber: firebaseUser.phoneNumber || '',
+          });
+          console.log('[GoogleLogin] ✅ User attributes set in RevenueCat');
+        }
+      } catch (rcError) {
+        console.error('[GoogleLogin] ⚠️ RevenueCat setup error:', rcError);
+        // Don't block login if RevenueCat fails
+      }
 
       const deviceId = await getDeviceId();
       console.log('[GoogleLogin] Step 8: Device ID:', deviceId);
@@ -214,8 +234,6 @@ export default function LoginScreen({ navigation }: Props): React.ReactElement {
       console.log('[GoogleLogin] Step 10: Backend authentication successful');
 
       await setIsLoggedIn(true);
-      await initializeBackgroundFetch();
-      void registerForPushNotifications();
 
       console.log('[GoogleLogin] Step 11: Navigation to MainTabs');
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });

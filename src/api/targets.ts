@@ -3,6 +3,8 @@ import {
   getAccessToken,
   getBaseUrl,
 } from '../utils/storage.ts';
+import { saveInitialSnapshot } from '../services/BackgroundFetchService';
+
 import CryptoJS from 'crypto-js';
 import { HmacSHA256 } from 'crypto-js';
 import { generateSignatureS } from './signature.ts';
@@ -98,7 +100,7 @@ const callAPI = async (method: string, path: string, body?: any) => {
       parsed = responseText;
     }
 
-    // Refresh + retry on expired token, else logout
+    // Refresh + retry on expired token
     const errorMessage: string =
       parsed && parsed.error ? String(parsed.error) : String(parsed || '');
     if (response.status === 401 || /token expired/i.test(errorMessage)) {
@@ -118,16 +120,6 @@ const callAPI = async (method: string, path: string, body?: any) => {
         } catch {
           parsed = retryText;
         }
-      } else {
-        // try {
-        //   console.log('[API][Auth] Refresh failed. Auto logout.');
-        //   await clearAuthState();
-        //   await setIsLoggedIn(false);
-        //   stopBackgroundFetch();
-        //   if (navigationRef.isReady()) resetToLogin();
-        // } catch (logoutErr) {
-        //   console.log('[API][Auth] Auto logout error:', logoutErr);
-        // }
       }
     }
 
@@ -169,7 +161,7 @@ export async function listTargets(): Promise<Target[]> {
         targets.map(async (t) => {
           try {
             console.log(
-              `[Targets][List] Fetching complete social data for @${t.username} (${t.platform})...`
+              `[Targets][List] ========== Processing @${t.username} (${t.platform}) ==========`
             );
 
             const params = {
@@ -178,7 +170,7 @@ export async function listTargets(): Promise<Target[]> {
               target_id: t.id,
             };
 
-            // Fetch userinfo, followers, and following in parallel using existing functions
+            // Fetch userinfo, followers, and following in parallel
             const [userInfoData, followersData, followingData] =
               await Promise.all([
                 getUserInfo(params),
@@ -186,131 +178,191 @@ export async function listTargets(): Promise<Target[]> {
                 getFollowing(params),
               ]);
 
-            console.log(`[Targets][List] API responses for @${t.username}:`, {
-              hasUserInfo: !!userInfoData,
-              hasFollowers: !!followersData,
-              hasFollowing: !!followingData,
+            console.log(
+              `[Targets][List] 📊 Raw API Response for @${t.username}:`,
+              JSON.stringify(userInfoData)?.substring(0, 800)
+            );
+
+            // Extract user info - handle nested structure
+            let userData: any = null;
+            if (userInfoData) {
+              // Unwrap layers: data.data or data or raw
+              const baseData =
+                userInfoData.data?.data || userInfoData.data || userInfoData;
+
+              console.log(
+                '[Targets][List] Base data keys:',
+                Object.keys(baseData).join(', ')
+              );
+
+              // For TikTok: Extract userInfo object which contains user and stats
+              if (t.platform === 'tiktok' && baseData.userInfo) {
+                console.log('[Targets][List] 🎵 TikTok structure detected');
+                userData = baseData.userInfo;
+                console.log(
+                  '[Targets][List] TikTok userInfo keys:',
+                  Object.keys(userData).join(', ')
+                );
+              } else {
+                // For Instagram or if userInfo doesn't exist
+                userData = baseData;
+              }
+            }
+
+            // Extract followers data
+            let followersCount = 0;
+            let followersList: any[] = [];
+            if (followersData) {
+              const followersResult = followersData.data || followersData;
+              followersList = followersResult.followers || [];
+              followersCount =
+                followersResult.total || followersList.length || 0;
+            }
+
+            // Extract following data
+            let followingCount = 0;
+            let followingList: any[] = [];
+            if (followingData) {
+              const followingResult = followingData.data || followingData;
+              followingList = followingResult.following || [];
+              followingCount =
+                followingResult.total || followingList.length || 0;
+            }
+
+            console.log(`[Targets][List] 📦 API counts for @${t.username}:`, {
+              followersFromAPI: followersCount,
+              followingFromAPI: followingCount,
             });
 
-            if (userInfoData) {
-              // Process user info
-              const base = userInfoData?.data || userInfoData || {};
+            // Extract follower/following counts based on platform
+            let finalFollowers = 0;
+            let finalFollowing = 0;
+            let profilePic = '';
+            let fullName = '';
+            let isVerified = false;
 
-              // Log the actual data structure
-              console.log(
-                `[Targets][List] Raw user data for @${t.username}:`,
-                JSON.stringify(base).substring(0, 300)
-              );
+            if (userData) {
+              if (t.platform === 'tiktok') {
+                console.log('[Targets][List] 🎵 Extracting TikTok data');
 
-              // Process followers
-              const followersResult =
-                followersData?.data || followersData || {};
-              const followersList = followersResult.followers || [];
-              const followersTotal =
-                followersResult.total || followersList.length || 0;
-
-              console.log(`[Targets][List] Followers for @${t.username}:`, {
-                count: followersTotal,
-                listLength: followersList.length,
-              });
-
-              // Process following
-              const followingResult =
-                followingData?.data || followingData || {};
-              const followingList = followingResult.following || [];
-              const followingTotal =
-                followingResult.total || followingList.length || 0;
-
-              console.log(`[Targets][List] Following for @${t.username}:`, {
-                count: followingTotal,
-                listLength: followingList.length,
-              });
-
-              // Extract follower/following counts with multiple fallback fields
-              const followers =
-                base.follower_count ||
-                base.followers_count ||
-                base.followers ||
-                base.followerCount ||
-                followersTotal ||
-                0;
-
-              const following =
-                base.following_count ||
-                base.followings_count ||
-                base.following ||
-                base.followingCount ||
-                followingTotal ||
-                0;
-
-              // Extract profile picture and other details
-              const profilePic =
-                base.profile_pic_url_hd ||
-                base.profile_pic_url ||
-                base.hd_profile_pic_url_info?.url ||
-                base.avatar_url ||
-                '';
-
-              const fullName = base.full_name || base.name || t.username;
-              const isVerified = base.is_verified || false;
-
-              console.log(
-                `[Targets][List] ✅ Extracted data for @${t.username}:`,
-                {
-                  followers,
-                  following,
-                  fullName,
-                  isVerified,
-                  hasProfilePic: !!profilePic,
-                  followersListCount: followersList.length,
-                  followingListCount: followingList.length,
+                // TikTok: userInfo.stats for counts
+                if (userData.stats) {
+                  finalFollowers =
+                    userData.stats.followerCount ||
+                    userData.stats.follower_count ||
+                    0;
+                  finalFollowing =
+                    userData.stats.followingCount ||
+                    userData.stats.following_count ||
+                    0;
+                  console.log('[Targets][List] TikTok stats found:', {
+                    followers: finalFollowers,
+                    following: finalFollowing,
+                  });
                 }
-              );
 
-              // Combine all data for detail screen
-              const combinedResult = {
-                ...base,
-                followers_list: followersList,
-                following_list: followingList,
-                followers_total: followersTotal,
-                following_total: followingTotal,
-              };
+                // TikTok: userInfo.user for profile info
+                if (userData.user) {
+                  profilePic =
+                    userData.user.avatarLarger ||
+                    userData.user.avatarMedium ||
+                    userData.user.avatarThumb ||
+                    '';
+                  fullName =
+                    userData.user.nickname ||
+                    userData.user.uniqueId ||
+                    t.username;
+                  isVerified = userData.user.verified || false;
 
-              return {
-                id: t.id,
-                platform: t.platform,
-                username: t.username,
-                followers: followers,
-                following: following,
-                profile_pic_url: profilePic,
-                full_name: fullName,
-                is_verified: isVerified,
-                last_checked: t.last_checked,
-                is_active: t.is_active,
-                user_id: t.user_id,
-                added_at: t.added_at,
-                result: combinedResult, // Store full API response with lists
-              } as Target;
+                  console.log('[Targets][List] TikTok user info:', {
+                    hasProfilePic: !!profilePic,
+                    profilePicUrl: profilePic,
+                    fullName,
+                    isVerified,
+                  });
+                }
+
+                // Fallback to API counts if not found in userInfo
+                if (finalFollowers === 0) finalFollowers = followersCount;
+                if (finalFollowing === 0) finalFollowing = followingCount;
+              } else {
+                // Instagram structure
+                console.log('[Targets][List] 📸 Extracting Instagram data');
+
+                finalFollowers =
+                  userData.follower_count ||
+                  userData.followers_count ||
+                  userData.followers ||
+                  userData.edge_followed_by?.count ||
+                  followersCount ||
+                  0;
+
+                finalFollowing =
+                  userData.following_count ||
+                  userData.followings_count ||
+                  userData.following ||
+                  userData.edge_follow?.count ||
+                  followingCount ||
+                  0;
+
+                profilePic =
+                  userData.profile_pic_url_hd ||
+                  userData.profile_pic_url ||
+                  userData.hd_profile_pic_url_info?.url ||
+                  '';
+
+                fullName = userData.full_name || userData.name || t.username;
+                isVerified = userData.is_verified || false;
+
+                console.log('[Targets][List] Instagram data:', {
+                  followers: finalFollowers,
+                  following: finalFollowing,
+                  hasProfilePic: !!profilePic,
+                });
+              }
             } else {
               console.log(
-                `[Targets][List] No user info data for @${t.username}`
+                `[Targets][List] ⚠️ No user data for @${t.username}, using API counts`
               );
-              return {
-                id: t.id,
-                platform: t.platform,
-                username: t.username,
-                followers: 0,
-                following: 0,
-                last_checked: t.last_checked,
-                is_active: t.is_active,
-                user_id: t.user_id,
-                added_at: t.added_at,
-                result: null,
-              } as Target;
+              finalFollowers = followersCount;
+              finalFollowing = followingCount;
             }
+
+            console.log(`[Targets][List] ✅ Final data for @${t.username}:`, {
+              followers: finalFollowers,
+              following: finalFollowing,
+              fullName,
+              hasProfilePic: !!profilePic,
+              profilePicPreview: profilePic,
+            });
+
+            // Combine all data for detail screen
+            const combinedResult = {
+              ...userData,
+              followers_list: followersList,
+              following_list: followingList,
+              followers_total: followersCount,
+              following_total: followingCount,
+            };
+
+            return {
+              id: t.id,
+              platform: t.platform,
+              username: t.username,
+              followers: finalFollowers,
+              following: finalFollowing,
+              profile_pic_url: profilePic,
+              full_name: fullName,
+              is_verified: isVerified,
+              last_checked: t.last_checked,
+              is_active: t.is_active,
+              user_id: t.user_id,
+              added_at: t.added_at,
+              result: combinedResult,
+            } as Target;
           } catch (error) {
             console.error(
-              `[Targets][List] Exception for @${t.username}:`,
+              `[Targets][List] ❌ Exception for @${t.username}:`,
               error
             );
             return {
@@ -329,9 +381,16 @@ export async function listTargets(): Promise<Target[]> {
         })
       );
 
-      console.log(
-        '[Targets][List] Successfully fetched all targets with social data'
-      );
+      console.log('[Targets][List] ✅ Complete! Final Summary:');
+      targetsWithSocialData.forEach((t) => {
+        console.log(`  📊 @${t.username} (${t.platform}):`, {
+          followers: t.followers,
+          following: t.following,
+          fullName: t.full_name,
+          hasProfilePic: !!t.profile_pic_url,
+        });
+      });
+
       targetsCache = {
         data: targetsWithSocialData,
         expiresAt: Date.now() + TARGETS_CACHE_TTL_MS,
@@ -352,12 +411,17 @@ export async function listTargets(): Promise<Target[]> {
   }
 }
 
+// At the very top of targets.ts, add this import:
+
+// Then replace your addTarget function completely:
 export async function addTarget(
   platform: Platform,
   username: string
 ): Promise<{ status: number; data?: any; error?: string }> {
   try {
     console.log('[Targets][Add] Starting...');
+    console.log('[Targets][Add] Platform:', platform);
+    console.log('[Targets][Add] Username:', username);
 
     const result = await callAPI('POST', '/api/targets', {
       platform,
@@ -365,8 +429,38 @@ export async function addTarget(
     });
 
     console.log('[Targets][Add][Response]', result);
+    console.log('[Targets][Add][Response Status]', result.status);
 
     if (result.status === 200 && result.data?.success) {
+      console.log('[Targets][Add] ✅ Target added successfully');
+      
+      // Clear cache so next listTargets() fetches fresh data
+      targetsCache = null;
+      console.log('[Targets][Add] Cache cleared');
+
+      // ✅ SAVE INITIAL SNAPSHOT FOR BACKGROUND COMPARISON
+      const addedTarget = result.data.target;
+      if (addedTarget) {
+        console.log('[Targets][Add] Saving initial snapshot for:', addedTarget.username);
+        console.log('[Targets][Add] Target data:', {
+          id: addedTarget.id,
+          username: addedTarget.username,
+          platform: addedTarget.platform,
+          followers: addedTarget.followers,
+          following: addedTarget.following,
+        });
+        
+        try {
+          await saveInitialSnapshot(addedTarget);
+          console.log('[Targets][Add] ✅ Initial snapshot saved successfully');
+        } catch (snapshotError) {
+          console.error('[Targets][Add] ❌ Error saving initial snapshot:', snapshotError);
+          // Don't fail the entire add operation if snapshot fails
+        }
+      } else {
+        console.warn('[Targets][Add] ⚠️ No target data returned from API, cannot save snapshot');
+      }
+
       return {
         status: result.status,
         data: result.data,
@@ -376,6 +470,8 @@ export async function addTarget(
         '[Targets][Add][Error] API returned error status:',
         result.status
       );
+      console.log('[Targets][Add][Error] Error message:', result.data?.error);
+      
       return {
         status: result.status,
         data: result.data,
@@ -384,12 +480,15 @@ export async function addTarget(
     }
   } catch (e) {
     console.log('[Targets][Add][Error] Exception occurred:', e);
+    console.error('[Targets][Add][Error] Stack trace:', e);
+    
     return {
       status: 500,
       error: e instanceof Error ? e.message : 'Network error occurred',
     };
   }
 }
+
 
 export async function deleteTarget(
   target_id: number
@@ -400,6 +499,8 @@ export async function deleteTarget(
     const result = await callAPI('DELETE', '/api/targets', { target_id });
 
     if (result.status === 200 && result.data.success) {
+      // Clear cache
+      targetsCache = null;
       return { success: true };
     } else {
       console.log(
@@ -423,7 +524,7 @@ export async function getUserInfo(params: {
   target_id: number;
 }): Promise<any> {
   try {
-    console.log('[Social][UserInfo] Starting...');
+    console.log('[Social][UserInfo] Starting for', params.username);
 
     const query = `platform=${encodeURIComponent(
       params.platform
@@ -433,16 +534,21 @@ export async function getUserInfo(params: {
       String(params.target_id)
     )}`;
     const path = `/api/social?${query}`;
-    console.log('[Social][UserInfo] Starting...', path);
 
     const result = await callAPI('GET', path);
-    console.log('[Social][UserInfo] result...', result);
+
+    console.log('[Social][UserInfo] Response status:', result.status);
+    console.log(
+      '[Social][UserInfo] Response data:',
+      JSON.stringify(result.data)?.substring(0, 800)
+    );
 
     if (result.status === 200 && result.data) {
       return result.data;
     } else {
       console.log(
-        '[Social][UserInfo][Error] API returned error, using dummy data'
+        '[Social][UserInfo][Error] API returned non-200 status:',
+        result.status
       );
       return null;
     }
@@ -458,7 +564,7 @@ export async function getFollowers(params: {
   target_id: number;
 }): Promise<any> {
   try {
-    console.log('[Social][Followers] Starting...');
+    console.log('[Social][Followers] Starting for', params.username);
 
     const query = `platform=${encodeURIComponent(
       params.platform
@@ -468,15 +574,19 @@ export async function getFollowers(params: {
       String(params.target_id)
     )}`;
     const path = `/api/social?${query}`;
-    console.log('[Social][Followers] Starting...', path);
 
     const result = await callAPI('GET', path);
-    console.log('[Social][Followers] Starting...', result);
+
+    console.log('[Social][Followers] Response status:', result.status);
+    console.log(
+      '[Social][Followers] Response data:',
+      JSON.stringify(result.data)?.substring(0, 300)
+    );
 
     if (result.status === 200 && result.data) {
       return result.data;
     } else {
-      console.log('[Social][Followers][Error] API returned error');
+      console.log('[Social][Followers][Error] API returned non-200 status');
       return { data: { followers: [], total: 0 } };
     }
   } catch (e) {
@@ -491,7 +601,7 @@ export async function getFollowing(params: {
   target_id: number;
 }): Promise<any> {
   try {
-    console.log('[Social][Following] Starting...');
+    console.log('[Social][Following] Starting for', params.username);
 
     const query = `platform=${encodeURIComponent(
       params.platform
@@ -501,15 +611,19 @@ export async function getFollowing(params: {
       String(params.target_id)
     )}`;
     const path = `/api/social?${query}`;
-    console.log('[Social][getFollowing] Starting...', path);
 
     const result = await callAPI('GET', path);
-    console.log('[Social][getFollowing] Starting...', result);
+
+    console.log('[Social][Following] Response status:', result.status);
+    console.log(
+      '[Social][Following] Response data:',
+      JSON.stringify(result.data)?.substring(0, 300)
+    );
 
     if (result.status === 200 && result.data) {
       return result.data;
     } else {
-      console.log('[Social][Following][Error] API returned error');
+      console.log('[Social][Following][Error] API returned non-200 status');
       return { data: { following: [], total: 0 } };
     }
   } catch (e) {
@@ -562,6 +676,58 @@ export async function getSubscriptions(): Promise<SubscriptionInfo> {
         subscription_start: null,
         subscription_end: null,
       },
+    };
+  }
+}
+/**
+ * Update or create a subscription for a user
+ * @param userId - The user ID to update subscription for
+ * @param subscriptionType - The subscription type (e.g., 'weekly', 'monthly', 'yearly')
+ */
+export async function updateSubscription(
+ 
+  subscriptionType: string
+): Promise<{ status: number; data?: any; error?: string }> {
+  try {
+    console.log('[Subscription][Update] Starting...');
+    
+    console.log('[Subscription][Update] Type:', subscriptionType);
+
+    const result = await callAPI('POST', '/api/subscription', {
+     // Ensure it's a string as per your curl example
+      type: subscriptionType,
+    });
+
+    console.log('[Subscription][Update][Response]', result);
+    console.log('[Subscription][Update][Response Status]', result.status);
+
+    if (result.status === 200 || result.status === 201) {
+      console.log('[Subscription][Update] ✅ Subscription updated successfully');
+      
+      return {
+        status: result.status,
+        data: result.data,
+      };
+    } else {
+      console.log(
+        '[Subscription][Update][Error] API returned error status:',
+        result.status
+      );
+      console.log('[Subscription][Update][Error] Error message:', result.data?.error);
+      
+      return {
+        status: result.status,
+        data: result.data,
+        error: result.data?.error || `API returned status ${result.status}`,
+      };
+    }
+  } catch (e) {
+    console.log('[Subscription][Update][Error] Exception occurred:', e);
+    console.error('[Subscription][Update][Error] Stack trace:', e);
+    
+    return {
+      status: 500,
+      error: e instanceof Error ? e.message : 'Network error occurred',
     };
   }
 }

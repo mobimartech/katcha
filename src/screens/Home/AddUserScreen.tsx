@@ -24,6 +24,7 @@ import { getIsLoggedIn } from '../../utils/auth';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import variables from '../../../constants/variables.js';
+import Purchases from 'react-native-purchases';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AddUser'>;
 
@@ -31,7 +32,9 @@ export default function AddUserScreen({
   navigation,
 }: Props): React.ReactElement {
   const { colors, spacing, radius, typography, shadows } = useAppTheme();
-  const [username, setUsername] = useState('');
+  // const [username, setUsername] = useState('');
+  const usernameInputRef = useRef('');
+
   const [platform, setPlatform] = useState<'instagram' | 'tiktok'>('instagram');
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'choose' | 'form'>('choose');
@@ -59,6 +62,8 @@ export default function AddUserScreen({
   }, [headerFade, cardTranslate]);
 
   const onAdd = async () => {
+    const username = usernameInputRef.current.trim();
+
     if (!username.trim()) {
       Alert.alert('Missing', 'Enter a username');
       return;
@@ -70,6 +75,23 @@ export default function AddUserScreen({
       navigation.replace('Login');
       return;
     }
+    // Check subscription status
+    // try {
+    //   const customerInfo = await Purchases.getCustomerInfo();
+    //   const isPremium =
+    //     typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+
+    //   if (!isPremium) {
+    //     // User is not subscribed, redirect to subscription page
+    //     navigation.replace('Subscription');
+    //     return;
+    //   }
+    // } catch (error) {
+    //   console.error('Failed to check subscription status:', error);
+    //   // Optionally redirect to subscription page if check fails
+    //   navigation.replace('Subscription');
+    //   return;
+    // }
 
     try {
       setLoading(true);
@@ -80,7 +102,8 @@ export default function AddUserScreen({
         const targets = await listTargets();
         if (targets.length === 1) {
           // First target just added, require subscription
-          navigation.replace('Subscription');
+          navigation.replace('MainTabs');
+          // navigation.replace('Subscription');
         } else {
           Alert.alert(
             'Success',
@@ -95,6 +118,21 @@ export default function AddUserScreen({
             ]
           );
         }
+      } else if (res.status === 403) {
+        const errorMessage = res.error || `API returned status ${res.status}`;
+
+        Alert.alert(
+          'Error',
+          `Failed to add @${username.trim()}.\n${errorMessage}`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.replace('Subscription');
+              },
+            },
+          ]
+        );
       } else {
         const errorMessage = res.error || `API returned status ${res.status}`;
         Alert.alert(
@@ -267,14 +305,16 @@ export default function AddUserScreen({
             <Text style={[styles.label, { color: colors.textSecondary }]}>
               Username
             </Text>
+
             <TextInput
               placeholder="Enter username"
               placeholderTextColor={colors.textSecondary}
               autoCapitalize="none"
               autoCorrect={false}
               autoFocus
-              value={username}
-              onChangeText={setUsername}
+              onChangeText={(text) => {
+                usernameInputRef.current = text;
+              }}
               style={[
                 styles.input,
                 {
@@ -428,7 +468,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     width: '100%', // Ensure full width
   },
-    ctaButtonns: {
+  ctaButtonns: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
