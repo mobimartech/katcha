@@ -1652,6 +1652,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - react-native-tracking-transparency (0.1.2):
+    - React
   - react-native-view-shot (3.8.0):
     - React-Core
   - react-native-webview (13.16.0):
@@ -2439,6 +2441,7 @@ DEPENDENCIES:
   - "react-native-blur (from `../node_modules/@react-native-community/blur`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
+  - react-native-tracking-transparency (from `../node_modules/react-native-tracking-transparency`)
   - react-native-view-shot (from `../node_modules/react-native-view-shot`)
   - react-native-webview (from `../node_modules/react-native-webview`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
@@ -2614,6 +2617,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-slider:
     :path: "../node_modules/@react-native-community/slider"
+  react-native-tracking-transparency:
+    :path: "../node_modules/react-native-tracking-transparency"
   react-native-view-shot:
     :path: "../node_modules/react-native-view-shot"
   react-native-webview:
@@ -2791,6 +2796,7 @@ SPEC CHECKSUMS:
   react-native-blur: d179f9d0898977578a42b0b536d4df57b8d7bd21
   react-native-safe-area-context: 52ff5621a01995b6984f4be90dcd216abf44e710
   react-native-slider: 89552e4381bc34e492a7b53be7ec78221bbc9896
+  react-native-tracking-transparency: 25ff1ff866e338c137c818bdec20526bb05ffcc1
   react-native-view-shot: 6b7ed61d77d88580fed10954d45fad0eb2d47688
   react-native-webview: cb72a2a67b25fe0cc7e68b2ff1e73c3af0b0470a
   React-NativeModulesApple: c761e39d8bb17a074530cb637ec6fe4460fac3af

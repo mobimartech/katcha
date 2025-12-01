@@ -10,25 +10,37 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import mobileAds from "react-native-google-mobile-ads";
-import Theme from "../constants/Theme";
+import mobileAds from 'react-native-google-mobile-ads';
+import Theme from '../constants/Theme';
+import Purchases, { PurchasesPackage } from 'react-native-purchases';
 
 const { width, height } = Dimensions.get('window');
+const [isPremium, setIsPremium] = useState(false);
 
 const SplashScreen = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const textOpacity = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
+  const checkPremiumStatus = async () => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      const premium =
+        typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+        console.log("Premium status:", premium);
+      setIsPremium(premium);
+    } catch (error) {
+      console.error('Failed to check premium status:', error);
+    }
+  };
+  useEffect(async () => {
     // Initialize mobile ads
-    mobileAds()
-      .initialize()
-      .then((adapterStatuses) => {
-        console.log("Admob initialize complete");
-      });
-
+    // mobileAds()
+    //   .initialize()
+    //   .then((adapterStatuses) => {
+    //     console.log("Admob initialize complete");
+    //   });
+    await checkPremiumStatus();
     // Start animations
     Animated.sequence([
       // Background fade in
@@ -61,7 +73,9 @@ const SplashScreen = ({ navigation }) => {
 
     // Navigate to Home after 2.5 seconds
     const timer = setTimeout(() => {
-      navigation.navigate('MainApp');
+      !isPremium
+        ? navigation.navigate('MainApp')
+        : navigation.navigate('Subscription');
     }, 2500);
 
     return () => clearTimeout(timer);
@@ -69,7 +83,10 @@ const SplashScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Theme.COLORS.PRIMARY} />
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor={Theme.COLORS.PRIMARY}
+      />
 
       {/* Background Gradient */}
       <Animated.View style={[styles.background, { opacity: fadeAnim }]} />
@@ -88,32 +105,17 @@ const SplashScreen = ({ navigation }) => {
           <Icon name="heart" size={48} color="#FFFFFF" />
         </Animated.View>
 
-        <Animated.Text
-          style={[
-            styles.appName,
-            { opacity: textOpacity },
-          ]}
-        >
+        <Animated.Text style={[styles.appName, { opacity: textOpacity }]}>
           Baby Generator
         </Animated.Text>
 
-        <Animated.Text
-          style={[
-            styles.tagline,
-            { opacity: textOpacity },
-          ]}
-        >
+        <Animated.Text style={[styles.tagline, { opacity: textOpacity }]}>
           See Your Future Baby with AI
         </Animated.Text>
       </View>
 
       {/* Bottom Branding */}
-      <Animated.View
-        style={[
-          styles.bottomContainer,
-          { opacity: textOpacity },
-        ]}
-      >
+      <Animated.View style={[styles.bottomContainer, { opacity: textOpacity }]}>
         <Text style={styles.versionText}>Version 1.0</Text>
       </Animated.View>
     </View>

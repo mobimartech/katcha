@@ -166,8 +166,6 @@ export default function SubscriptionScreen(): React.ReactElement {
       if (typeof customerInfo.entitlements.active['pro'] !== 'undefined') {
         setIsPremium(true);
 
-     
-
         const result = await updateSubscription(selectedPlan);
         await setIsLoggedIn(true);
         await initializeBackgroundFetch();
@@ -425,15 +423,15 @@ export default function SubscriptionScreen(): React.ReactElement {
             {/* Continue Button */}
             <TouchableOpacity
               onPress={handlePurchase}
-              disabled={loading  || useDefaultPackages}
+              disabled={loading || useDefaultPackages}
               activeOpacity={0.8}
               style={styles.subscribeButtonWrapper}
             >
               <View
                 style={[
                   styles.subscribeButton,
-                  (useDefaultPackages || isPremium) &&
-                    styles.subscribeButtonDisabled,
+                  // (useDefaultPackages || isPremium) &&
+                  //   styles.subscribeButtonDisabled,
                 ]}
               >
                 {loading ? (
@@ -447,20 +445,13 @@ export default function SubscriptionScreen(): React.ReactElement {
                   //     : 'Continue'}
                   // </Text>
 
-
-
-   <Text style={styles.subscribeButtonText}>
-                    {'Continue'}
-                  </Text>
-
-
-
+                  <Text style={styles.subscribeButtonText}>{'Continue'}</Text>
                 )}
               </View>
             </TouchableOpacity>
 
             {/* Footer Links Row: Privacy | Restore | Terms */}
-            {!isPremium && (
+            {
               <View style={styles.footerLinksRow}>
                 <TouchableOpacity
                   style={styles.footerLink}
@@ -504,7 +495,7 @@ export default function SubscriptionScreen(): React.ReactElement {
                   <Text style={styles.footerLinkText}>Terms</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            }
             <View style={styles.disclaimerContainer}>
               <Text style={styles.disclaimerText}>
                 Once you subscribe, the subscription will commence immediately.
@@ -514,14 +505,14 @@ export default function SubscriptionScreen(): React.ReactElement {
               </Text>
             </View>
             {/* Premium Badge */}
-            {isPremium && (
+            {/* {isPremium && (
               <View style={styles.premiumBadge}>
                 <Icon name="checkmark-circle" size={20} color="#FFF" />
                 <Text style={styles.premiumBadgeText}>
                   You have Premium Access
                 </Text>
               </View>
-            )}
+            )} */}
           </Animated.View>
         </SafeAreaView>
       </ScrollView>
