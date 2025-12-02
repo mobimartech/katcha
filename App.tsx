@@ -19,6 +19,11 @@ export default function App(): React.ReactElement {
   }, []);
 
   useEffect(() => {
+    const requestATTPermission = async () => {
+      await requestTrackingPermission();
+    };
+
+    requestATTPermission();
     // initializeRevenueCat('appl_bwytOJSXqaDnJTPBMncYDShpOIn');
     initializeRevenueCat('appl_bwytOJSXqaDnJTPBMncYDShpOIn');
 
@@ -32,42 +37,6 @@ export default function App(): React.ReactElement {
           'f832fa058fca30a795b57ed79b8c9574323ff6e20ac0a91a02fd11f4e7f7e6c1',
       });
     })();
-  }, []);
-
-  // Request App Tracking Transparency permission
-  useEffect(() => {
-    const requestATTPermission = async () => {
-      if (Platform.OS === 'ios') {
-        
-        try {
-          // Add a small delay to ensure app is fully loaded
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-
-          // Check current tracking status
-          const currentStatus = await getTrackingStatus();
-          console.log('Current ATT status:', currentStatus);
-
-          // Request permission if not determined yet
-          if (currentStatus === 'not-determined') {
-            const trackingStatus = await requestTrackingPermission();
-            console.log('ATT permission result:', trackingStatus);
-
-            // Handle the permission result
-            if (trackingStatus === 'authorized') {
-              console.log('User authorized tracking');
-              // Initialize any tracking/analytics services here if needed
-            } else {
-              console.log('User did not authorize tracking:', trackingStatus);
-              // Use privacy-preserving analytics only
-            }
-          }
-        } catch (error) {
-          console.error('Error requesting ATT permission:', error);
-        }
-      }
-    };
-
-    requestATTPermission();
   }, []);
 
   return (

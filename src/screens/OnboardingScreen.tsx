@@ -83,17 +83,21 @@ export default function OnboardingScreen({ navigation }) {
         console.log('Review flow completed');
       }
       // Continue to the last slide regardless of success/failure
-      animateTransition(currentIndex + 1);
+      // animateTransition(currentIndex + 1);
     });
   };
 
   const handleContinue = async () => {
     if (currentIndex < slides.length - 1) {
-      // Show in-app review before the last onboarding page (when moving from slide 3 to 4)
+      // Always transition immediately for responsive feel
+      animateTransition(currentIndex + 1);
+
+      // Show review dialog AFTER transitioning (non-blocking)
       if (currentIndex === 2) {
-        showInAppReview();
-      } else {
-        animateTransition(currentIndex + 1);
+        // Small delay to ensure smooth transition, then show review
+        setTimeout(() => {
+          showInAppReview();
+        }, 300);
       }
     } else {
       await setOnboardingComplete();
