@@ -81,6 +81,8 @@ export default function OnboardingScreen({ navigation }) {
       if (success) {
         // Review flow finished successfully
         console.log('Review flow completed');
+      } else {
+        console.log(`Review ${errorMessage}`);
       }
       // Continue to the last slide regardless of success/failure
       // animateTransition(currentIndex + 1);
@@ -94,10 +96,11 @@ export default function OnboardingScreen({ navigation }) {
 
       // Show review dialog AFTER transitioning (non-blocking)
       if (currentIndex === 2) {
+        showInAppReview();
         // Small delay to ensure smooth transition, then show review
-        setTimeout(() => {
-          showInAppReview();
-        }, 300);
+        // setTimeout(() => {
+
+        // }, 0);
       }
     } else {
       await setOnboardingComplete();

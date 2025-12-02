@@ -34,7 +34,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1.6</string>
+	<string>1.7</string>
 	<key>EnableRemoteNotifications</key>
 	<false/>
 	<key>GADApplicationIdentifier</key>
@@ -85,8 +85,8 @@
 	<string>Katcha may use speech recognition if needed for accessibility features, but does not record or store any spoken data.</string>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>Social Tracker needs notification permission to alert you about follower changes and account updates.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>We use tracking data to provide personalized content and measure ad performance</string>
+	<!-- <key>NSUserTrackingUsageDescription</key>
+	<string>We use tracking data to provide personalized content and measure ad performance</string> -->
 	<key>PHPhotoLibraryPreventAutomaticLimitedAccessAlert</key>
 	<true/>
 	<key>SKAdNetworkItems</key>

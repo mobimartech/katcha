@@ -7,23 +7,21 @@ import { Platform } from 'react-native';
 import { setupForegroundNotificationListeners } from './src/notifications/messaging';
 import { setBaseUrl, setApiCredentials } from './src/utils/storage.ts';
 import { initializeRevenueCat } from './src/config/revenueCat.js';
-import {
-  requestTrackingPermission,
-  getTrackingStatus,
-} from 'react-native-tracking-transparency';
+// import {
+//   requestTrackingPermission,
+//   getTrackingStatus,
+// } from 'react-native-tracking-transparency';
 
 export default function App(): React.ReactElement {
   useEffect(() => {
+    //requestATTPermission();
     const unsubscribe = setupForegroundNotificationListeners();
     return unsubscribe;
   }, []);
-
+  // const requestATTPermission = async () => {
+  //   await requestTrackingPermission();
+  // };
   useEffect(() => {
-    const requestATTPermission = async () => {
-      await requestTrackingPermission();
-    };
-
-    requestATTPermission();
     // initializeRevenueCat('appl_bwytOJSXqaDnJTPBMncYDShpOIn');
     initializeRevenueCat('appl_bwytOJSXqaDnJTPBMncYDShpOIn');
 
