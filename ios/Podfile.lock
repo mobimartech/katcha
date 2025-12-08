@@ -9,6 +9,9 @@ PODS:
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
+  - AppsFlyerFramework (6.17.7):
+    - AppsFlyerFramework/Main (= 6.17.7)
+  - AppsFlyerFramework/Main (6.17.7)
   - boost (1.84.0)
   - BVLinearGradient (2.8.3):
     - React-Core
@@ -1504,6 +1507,9 @@ PODS:
     - React-jsiexecutor
     - React-RCTFBReactNativeSpec
     - ReactCommon/turbomodule/core
+  - react-native-appsflyer (6.17.7):
+    - AppsFlyerFramework (= 6.17.7)
+    - React
   - react-native-blur (4.4.1):
     - DoubleConversion
     - glog
@@ -2312,7 +2318,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNSVG (15.15.0):
+  - RNSVG (15.15.1):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2335,9 +2341,9 @@ PODS:
     - ReactCodegen
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
-    - RNSVG/common (= 15.15.0)
+    - RNSVG/common (= 15.15.1)
     - Yoga
-  - RNSVG/common (15.15.0):
+  - RNSVG/common (15.15.1):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2438,6 +2444,7 @@ DEPENDENCIES:
   - React-logger (from `../node_modules/react-native/ReactCommon/logger`)
   - React-Mapbuffer (from `../node_modules/react-native/ReactCommon`)
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
+  - react-native-appsflyer (from `../node_modules/react-native-appsflyer`)
   - "react-native-blur (from `../node_modules/@react-native-community/blur`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
@@ -2500,6 +2507,7 @@ SPEC REPOS:
   trunk:
     - AppAuth
     - AppCheckCore
+    - AppsFlyerFramework
     - Firebase
     - FirebaseABTesting
     - FirebaseAnalytics
@@ -2611,6 +2619,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon"
   React-microtasksnativemodule:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/microtasks"
+  react-native-appsflyer:
+    :path: "../node_modules/react-native-appsflyer"
   react-native-blur:
     :path: "../node_modules/@react-native-community/blur"
   react-native-safe-area-context:
@@ -2729,6 +2739,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppAuth: 1c1a8afa7e12f2ec3a294d9882dfa5ab7d3cb063
   AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
+  AppsFlyerFramework: ae7caf1688348f2d7a742037bd4fc6966d39d362
   boost: 7e761d76ca2ce687f7cc98e698152abd03a18f90
   BVLinearGradient: 880f91a7854faff2df62518f0281afb1c60d49a3
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
@@ -2793,6 +2804,7 @@ SPEC CHECKSUMS:
   React-logger: 44e070aefe084568c02b544b9d7d436703be1a47
   React-Mapbuffer: ed1f528261013e46790379cc6727b8005e169a67
   React-microtasksnativemodule: da563fd4cb7ecc23f67b5f15b92dfe94a9791e2d
+  react-native-appsflyer: 0193e2b671b78146197c052cf98ca33fcddbd3c1
   react-native-blur: d179f9d0898977578a42b0b536d4df57b8d7bd21
   react-native-safe-area-context: 52ff5621a01995b6984f4be90dcd216abf44e710
   react-native-slider: 89552e4381bc34e492a7b53be7ec78221bbc9896
@@ -2835,11 +2847,11 @@ SPEC CHECKSUMS:
   RNBackgroundFetch: 534f5bba01d1e45559aa7d53f42e00124378db93
   RNCAsyncStorage: 5affb373b519f7887143d2ce6f4e049b74aaf2ee
   RNCPushNotificationIOS: 64218f3c776c03d7408284a819b2abfda1834bc8
-  RNFBAnalytics: 92d41567b8420bf7c76646b72a09196600f27fc7
-  RNFBApp: 2c88b4fc4bcecf25ff9077abde08f4b1cbaff4c6
-  RNFBAuth: aac755fbd54168066ca6b48b103597f8d200fab0
-  RNFBMessaging: 0b59df24d77a9fabe86cbc46c464ff58387479ba
-  RNFBRemoteConfig: 90e2b70c3e9e5bb08c9b3fa73152706c81225c25
+  RNFBAnalytics: bff2eb8c8d68f23f9ca02549697fef65455fa246
+  RNFBApp: d15dab17b5639fb7f95712d07c204912a534b8c6
+  RNFBAuth: c39fc1bf0abb3d67206120acec1bfa81cc70d502
+  RNFBMessaging: 4bd5c51d84004dc68b6a7dd0dec0828720f09be1
+  RNFBRemoteConfig: 75d3335600b9d7c31522d92f72b87dde08ad7256
   RNGoogleSignin: aed23aa07ce9fa3cff4f1e4735f298d497b89ab5
   RNIap: f193da865e819a25638d29c845629e17a943590c
   RNPermissions: 8a64f52871d153da43f06d20d78f29199c6ac0b8
@@ -2848,12 +2860,12 @@ SPEC CHECKSUMS:
   RNReanimated: 92a1b1cdfc46bddf0a9dc80183145a17625b6f3a
   RNScreens: 8cb433fe2ca0eaa6b33f4356679b17bc6e4d84bc
   RNShare: 0634507a2fa2f608c36941382547952b246b4eac
-  RNSVG: 1bee41bccb7db05bd990f427eba75d8ae76c0f12
+  RNSVG: 0cd0901b4c580cd92db13c90e35e7f1f0cecae6c
   RNVectorIcons: a61c8928c6a9b36cb66fb98c17ed60591e540fba
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   VisionCamera: 3ea10c46a5c612f5f89fb46a54bef4a0de8b58a7
   Yoga: b2eaabf17044cd4273a661b14eb83f9fd2c90491
 
-PODFILE CHECKSUM: fffe01b672b7b0489d489786477b1e5c808c07bc
+PODFILE CHECKSUM: b63259b6e7308994d9f864fa1ee04f5d846b72b9
 
 COCOAPODS: 1.16.2

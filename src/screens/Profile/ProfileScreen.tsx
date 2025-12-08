@@ -176,7 +176,7 @@ export default function ProfileScreen({
         </Text>
         {/* spacer to balance center title */}
         <View style={{ alignItems: 'flex-end', marginBottom: 8 }}>
-          <Pressable
+          {/* <Pressable
             onPress={toggleTheme}
             style={[
               styles.toggleBtn,
@@ -188,7 +188,7 @@ export default function ProfileScreen({
               size={18}
               color={colors.text}
             />
-          </Pressable>
+          </Pressable> */}
         </View>
       </View>
 

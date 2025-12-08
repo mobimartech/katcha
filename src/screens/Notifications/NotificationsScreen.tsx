@@ -10,11 +10,11 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
+import { useAppTheme } from '../../theme/ThemeProvider';
 import {
   getSavedNotifications,
   markNotificationAsRead,
@@ -28,6 +28,7 @@ import { formatNumber } from '../../utils/formatNumber';
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
 export default function NotificationsScreen({ navigation }: Props) {
+  const { colors, spacing, radius, typography, shadows } = useAppTheme();
   const [notifications, setNotifications] = useState<SavedNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +62,11 @@ export default function NotificationsScreen({ navigation }: Props) {
     loadNotifications();
 
     // Navigate to target detail if available
-    if (notification.targetId && notification.username && notification.platform) {
+    if (
+      notification.targetId &&
+      notification.username &&
+      notification.platform
+    ) {
       navigation.navigate('UserDetail', {
         userId: notification.targetId.toString(),
         username: notification.username,
@@ -119,35 +124,69 @@ export default function NotificationsScreen({ navigation }: Props) {
         ? 'warning'
         : 'information-circle';
 
-    const iconColor = item.read ? 'rgba(255,255,255,0.5)' : '#4ade80';
+    const iconColor = item.read ? colors.textSecondary : '#4ade80';
+    const iconBgColor = item.read ? '#F3F4F6' : '#DCFCE7';
 
     return (
       <TouchableOpacity
-        style={[styles.notificationCard, !item.read && styles.unreadCard]}
-        // onPress={() => handleNotificationPress(item)}
-        activeOpacity={0.8}
+        style={[
+          styles.notificationCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: item.read ? colors.border : '#86efac',
+            ...shadows.small,
+          },
+          !item.read && styles.unreadCard,
+        ]}
+        onPress={() => handleNotificationPress(item)}
+        activeOpacity={0.7}
       >
         <View style={styles.cardContent}>
-          <View style={styles.iconBox}>
-            <Icon name={icon} size={24} color={iconColor} />
+          <View style={[styles.iconBox, { backgroundColor: iconBgColor }]}>
+            <Icon name={icon} size={20} color={iconColor} />
           </View>
 
           <View style={styles.textContent}>
             <View style={styles.headerRow}>
-              <Text style={[styles.title, !item.read && styles.unreadTitle]}>
+              <Text
+                style={[
+                  styles.title,
+                  { color: colors.text },
+                  !item.read && styles.unreadTitle,
+                ]}
+                numberOfLines={1}
+              >
                 {item.title}
               </Text>
               {!item.read && <View style={styles.unreadDot} />}
             </View>
 
-            <Text style={styles.message}>{item.message}</Text>
+            <Text style={[styles.message, { color: colors.textSecondary }]}>
+              {item.message}
+            </Text>
 
             {item.changeData && (
               <View style={styles.changesGrid}>
                 {item.changeData.followersDiff !== 0 && (
-                  <View style={styles.changeBox}>
-                    <Icon name="people" size={14} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.changeText}>
+                  <View
+                    style={[
+                      styles.changeBox,
+                      {
+                        backgroundColor: '#F9FAFB',
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Icon name="people" size={14} color={colors.primary} />
+                    <Text
+                      style={[
+                        styles.changeLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Followers:
+                    </Text>
+                    <Text style={[styles.changeText, { color: colors.text }]}>
                       {formatNumber(item.changeData.oldFollowers)} →{' '}
                       {formatNumber(item.changeData.newFollowers)}
                     </Text>
@@ -166,9 +205,25 @@ export default function NotificationsScreen({ navigation }: Props) {
                 )}
 
                 {item.changeData.followingDiff !== 0 && (
-                  <View style={styles.changeBox}>
-                    <Icon name="person-add" size={14} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.changeText}>
+                  <View
+                    style={[
+                      styles.changeBox,
+                      {
+                        backgroundColor: '#F9FAFB',
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Icon name="person-add" size={14} color={colors.primary} />
+                    <Text
+                      style={[
+                        styles.changeLabel,
+                        { color: colors.textSecondary },
+                      ]}
+                    >
+                      Following:
+                    </Text>
+                    <Text style={[styles.changeText, { color: colors.text }]}>
                       {formatNumber(item.changeData.oldFollowing)} →{' '}
                       {formatNumber(item.changeData.newFollowing)}
                     </Text>
@@ -189,8 +244,12 @@ export default function NotificationsScreen({ navigation }: Props) {
             )}
 
             <View style={styles.footer}>
-              <Icon name="time-outline" size={12} color="rgba(255,255,255,0.6)" />
-              <Text style={styles.timestamp}>
+              <Icon
+                name="time-outline"
+                size={12}
+                color={colors.textSecondary}
+              />
+              <Text style={[styles.timestamp, { color: colors.textSecondary }]}>
                 {formatTimestamp(item.timestamp)}
               </Text>
             </View>
@@ -201,7 +260,7 @@ export default function NotificationsScreen({ navigation }: Props) {
             onPress={() => handleDelete(item.id)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Icon name="close-circle" size={24} color="rgba(255,255,255,0.4)" />
+            <Icon name="close-circle" size={24} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </TouchableOpacity>
@@ -211,26 +270,23 @@ export default function NotificationsScreen({ navigation }: Props) {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <LinearGradient
-      colors={['#667eea', '#764ba2', '#f093fb', '#4facfe']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.container}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={[styles.backButton, { borderColor: colors.border }]}
             onPress={() => navigation.goBack()}
           >
-            <Icon name="arrow-back" size={24} color="#ffffff" />
+            <Icon name="chevron-back" size={20} color={colors.text} />
           </TouchableOpacity>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Notifications</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>
+              Notifications
+            </Text>
             {unreadCount > 0 && (
               <View style={styles.badge}>
                 <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -239,8 +295,11 @@ export default function NotificationsScreen({ navigation }: Props) {
           </View>
 
           {notifications.length > 0 && (
-            <TouchableOpacity style={styles.menuButton} onPress={handleClearAll}>
-              <Icon name="trash-outline" size={22} color="#ffffff" />
+            <TouchableOpacity
+              style={[styles.menuButton, { borderColor: colors.border }]}
+              onPress={handleClearAll}
+            >
+              <Icon name="trash-outline" size={20} color={colors.text} />
             </TouchableOpacity>
           )}
         </View>
@@ -248,8 +307,17 @@ export default function NotificationsScreen({ navigation }: Props) {
         {/* Actions Bar */}
         {notifications.length > 0 && unreadCount > 0 && (
           <View style={styles.actionsBar}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleMarkAllRead}>
-              <Icon name="checkmark-done" size={18} color="#ffffff" />
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: colors.primary,
+                  borderColor: colors.primary,
+                },
+              ]}
+              onPress={handleMarkAllRead}
+            >
+              <Icon name="checkmark-done" size={16} color="#ffffff" />
               <Text style={styles.actionText}>Mark all as read</Text>
             </TouchableOpacity>
           </View>
@@ -258,18 +326,26 @@ export default function NotificationsScreen({ navigation }: Props) {
         {/* Notifications List */}
         {loading ? (
           <View style={styles.emptyContainer}>
-            <Icon name="hourglass-outline" size={48} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.emptyText}>Loading notifications...</Text>
+            <View style={[styles.emptyIconBox, { backgroundColor: '#F3F4F6' }]}>
+              <Icon name="hourglass-outline" size={32} color={colors.primary} />
+            </View>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              Loading notifications...
+            </Text>
           </View>
         ) : notifications.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <View style={styles.emptyIconBox}>
-              <Icon name="notifications-off" size={52} color="rgba(255,255,255,0.8)" />
+            <View style={[styles.emptyIconBox, { backgroundColor: '#F3F4F6' }]}>
+              <Icon name="notifications-off" size={40} color={colors.primary} />
             </View>
-            <Text style={styles.emptyTitle}>No Notifications Yet</Text>
-            <Text style={styles.emptySubtitle}>
-              You'll receive notifications when your tracked accounts have changes in
-              followers or following counts
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              No Notifications Yet
+            </Text>
+            <Text
+              style={[styles.emptySubtitle, { color: colors.textSecondary }]}
+            >
+              You'll receive notifications when your tracked accounts have
+              changes in followers or following counts
             </Text>
           </View>
         ) : (
@@ -283,13 +359,13 @@ export default function NotificationsScreen({ navigation }: Props) {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#ffffff"
+                tintColor={colors.primary}
               />
             }
           />
         )}
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 
@@ -320,15 +396,15 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -340,45 +416,43 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#ffffff',
-    letterSpacing: -0.5,
+    fontSize: 18,
+    fontWeight: '800',
   },
   badge: {
     backgroundColor: '#ef4444',
-    borderRadius: 12,
+    borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
-    minWidth: 24,
+    minWidth: 20,
     alignItems: 'center',
   },
   badgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#ffffff',
   },
   menuButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   actionsBar: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
     alignSelf: 'flex-start',
+    borderWidth: 1,
   },
   actionText: {
     fontSize: 13,
@@ -386,34 +460,30 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   listContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
+    paddingTop: 8,
     paddingBottom: 30,
   },
   notificationCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 20,
-    marginBottom: 12,
+    borderRadius: 12,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
     overflow: 'hidden',
   },
   unreadCard: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderColor: 'rgba(74, 222, 128, 0.5)',
     borderWidth: 2,
   },
   cardContent: {
     flexDirection: 'row',
-    padding: 16,
+    padding: 12,
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   textContent: {
     flex: 1,
@@ -421,17 +491,16 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    gap: 6,
+    marginBottom: 4,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: 'rgba(255,255,255,0.9)',
+    fontSize: 15,
+    fontWeight: '700',
     flex: 1,
   },
   unreadTitle: {
-    color: '#ffffff',
+    fontWeight: '800',
   },
   unreadDot: {
     width: 8,
@@ -440,40 +509,41 @@ const styles = StyleSheet.create({
     backgroundColor: '#4ade80',
   },
   message: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.85)',
-    marginBottom: 12,
-    fontWeight: '600',
-    lineHeight: 20,
+    fontSize: 13,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   changesGrid: {
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 8,
   },
   changeBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  changeLabel: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   changeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.9)',
+    flex: 1,
   },
   changeDiff: {
     fontSize: 12,
     fontWeight: '800',
-    marginLeft: 'auto',
   },
   positiveChange: {
-    color: '#4ade80',
+    color: '#16a34a',
   },
   negativeChange: {
-    color: '#f87171',
+    color: '#dc2626',
   },
   footer: {
     flexDirection: 'row',
@@ -482,11 +552,11 @@ const styles = StyleSheet.create({
   },
   timestamp: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '600',
+    fontWeight: '500',
   },
   deleteButton: {
     marginLeft: 8,
+    padding: 4,
   },
   emptyContainer: {
     flex: 1,
@@ -495,31 +565,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyIconBox: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#ffffff',
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
-    lineHeight: 22,
-    fontWeight: '600',
+    lineHeight: 20,
   },
 });

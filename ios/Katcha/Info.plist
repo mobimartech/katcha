@@ -2,6 +2,52 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+
+<!-- AppsFlyer Configuration -->
+	<key>AppsFlyerAppID</key>
+	<string>6755113314</string>
+	<key>AppsFlyerDevKey</key>
+	<string>vGXE7RD5b5hdMrgwWi7vFX</string>
+	<!-- Universal Links - Associated Domains -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<!-- Second OneLink Domain (aistylist) -->
+		<string>applinks:katcha.onelink.me</string>
+		<string>applinks:katcha.onelink-suggestions.com</string>
+	</array>
+	
+	<!-- Custom URL Schemes -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.katcha.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>katcha</string>
+				<string>Katcha</string>
+
+			</array>
+		</dict>
+	</array>
+	
+	<!-- Associated Domains (Duplicate for older iOS versions) -->
+	<key>AssociatedDomains</key>
+	<array>
+		<string>applinks:katcha.onelink.me</string>
+		<string>applinks:katcha.onelink-suggestions.com</string>
+
+	</array>
+	
+	<!-- ATT Permission -->
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This app uses tracking to measure the effectiveness of ads and provide you with better app experiences.</string>
+
+
+	<!-- rest  -->
+
+
+
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -34,7 +80,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1.7</string>
+	<string>1.8</string>
 	<key>EnableRemoteNotifications</key>
 	<false/>
 	<key>GADApplicationIdentifier</key>

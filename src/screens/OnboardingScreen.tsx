@@ -8,42 +8,42 @@ import {
   Image,
   Animated,
   PanResponder,
-  Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Rate, { AndroidMarket } from 'react-native-rate';
 import { setOnboardingComplete } from '../utils/onboarding';
+import Rate, { AndroidMarket } from 'react-native-rate';
 
 const { width, height } = Dimensions.get('window');
 
 const slides = [
   {
     id: 1,
-    title: 'Track your Instagram &\nTikTok accounts in one place',
+    title: 'Track All Your Accounts',
     description:
-      'Connect your social profiles and monitor followers, followings, and activity — all from one dashboard.',
+      'Monitor Instagram & TikTok followers and activity in one place.',
     image: require('../../assets/onboarding/slide1.png'),
+    type: 'normal',
   },
   {
     id: 2,
-    title: 'See who unfollowed or\nfollowed you instantly',
-    description:
-      'Get real-time updates about new followers and people who unfollowed you — never miss a change again.',
+    title: 'Never Miss a Change',
+    description: 'See who follows or unfollows you in real-time.',
     image: require('../../assets/onboarding/slide2.png'),
+    type: 'normal',
   },
   {
     id: 3,
-    title: 'Stay notified about your\nsocial changes',
-    description:
-      'Receive smart notifications whenever something important happens — from lost followers to new activity.',
+    title: 'Enjoying Katcha?',
+    description: 'Rate us to help us grow!',
     image: require('../../assets/onboarding/slide3.png'),
+    type: 'review',
   },
   {
     id: 4,
-    title: 'Start growing your\naudience smarter',
-    description:
-      'Analyze trends, find your loyal fans, and optimize your content to grow faster than ever.',
+    title: 'Grow Your Audience',
+    description: 'Analyze trends and find your loyal fans.',
     image: require('../../assets/onboarding/slide4.png'),
+    type: 'normal',
   },
 ];
 
@@ -52,7 +52,8 @@ export default function OnboardingScreen({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const animateTransition = (newIndex) => {
-    // Fade out
+    fadeAnim.stopAnimation();
+
     Animated.timing(fadeAnim, {
       toValue: 0,
       duration: 200,
@@ -60,7 +61,6 @@ export default function OnboardingScreen({ navigation }) {
     }).start(() => {
       setCurrentIndex(newIndex);
 
-      // Fade in
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 200,
@@ -68,6 +68,39 @@ export default function OnboardingScreen({ navigation }) {
       }).start();
     });
   };
+
+  const handleContinue = async () => {
+    if (currentIndex < slides.length - 1) {
+      animateTransition(currentIndex + 1);
+      if (slides[currentIndex + 1].type === 'review') {
+        showInAppReview();
+      }
+    } else {
+      await setOnboardingComplete();
+      navigation.replace('Subscription');
+    }
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 10;
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx < -50 && currentIndex < slides.length - 1) {
+          if (currentIndex === 2) {
+            showInAppReview();
+          } else {
+            animateTransition(currentIndex + 1);
+          }
+        } else if (gestureState.dx > 50 && currentIndex > 0) {
+          animateTransition(currentIndex - 1);
+        }
+      },
+    })
+  ).current;
+
+  const currentSlide = slides[currentIndex];
 
   const showInAppReview = () => {
     const options = {
@@ -89,51 +122,9 @@ export default function OnboardingScreen({ navigation }) {
     });
   };
 
-  const handleContinue = async () => {
-    if (currentIndex < slides.length - 1) {
-      // Always transition immediately for responsive feel
-      animateTransition(currentIndex + 1);
-
-      // Show review dialog AFTER transitioning (non-blocking)
-      if (currentIndex === 2) {
-        showInAppReview();
-        // Small delay to ensure smooth transition, then show review
-        // setTimeout(() => {
-
-        // }, 0);
-      }
-    } else {
-      await setOnboardingComplete();
-      navigation.replace('Subscription');
-    }
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 10;
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx < -50 && currentIndex < slides.length - 1) {
-          // Swipe left - next slide
-          if (currentIndex === 2) {
-            showInAppReview();
-          } else {
-            animateTransition(currentIndex + 1);
-          }
-        } else if (gestureState.dx > 50 && currentIndex > 0) {
-          // Swipe right - previous slide
-          animateTransition(currentIndex - 1);
-        }
-      },
-    })
-  ).current;
-
-  const currentSlide = slides[currentIndex];
-
   return (
     <LinearGradient colors={['#698eff', '#dc80ff']} style={styles.container}>
-      {/* Image at the top - takes up more space */}
+      {/* Image at the top */}
       <View style={styles.imageContainer} {...panResponder.panHandlers}>
         <Animated.View style={{ opacity: fadeAnim }}>
           <Image
@@ -144,9 +135,9 @@ export default function OnboardingScreen({ navigation }) {
         </Animated.View>
       </View>
 
-      {/* Bottom white card - more compact */}
+      {/* Bottom white card */}
       <View style={styles.bottomCard}>
-        {/* Page Indicators - Numbered Steps */}
+        {/* Page Indicators */}
         <View style={styles.pagination}>
           {slides.map((_, index) => (
             <React.Fragment key={index}>
@@ -178,37 +169,42 @@ export default function OnboardingScreen({ navigation }) {
           ))}
         </View>
 
-        {/* Title */}
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={styles.title}>{currentSlide.title}</Text>
-        </Animated.View>
+        {/* Content Container */}
+        <View style={styles.contentContainer}>
+          {/* Title */}
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <Text style={styles.title}>{currentSlide.title}</Text>
+          </Animated.View>
 
-        {/* Description */}
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={styles.description}>{currentSlide.description}</Text>
-        </Animated.View>
+          {/* Description */}
+          <Animated.View style={{ opacity: fadeAnim }}>
+            <Text style={styles.description}>{currentSlide.description}</Text>
+          </Animated.View>
 
-        {/* Continue Button */}
-        <TouchableOpacity
-          style={styles.buttonWrapper}
-          onPress={handleContinue}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={['#7A86FF', '#3C9DFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.button}
+          {/* NO STARS - Completely removed for testing */}
+        </View>
+
+        {/* Button Container */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.buttonWrapper}
+            onPress={handleContinue}
+            activeOpacity={0.8}
           >
-            <Text style={styles.buttonText}>Continue</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+            <LinearGradient
+              colors={['#7A86FF', '#3C9DFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.button}
+            >
+              <Text style={styles.buttonText}>Continue</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
       </View>
     </LinearGradient>
   );
 }
-
-// ... (styles remain the same)
 
 const styles = StyleSheet.create({
   container: {
@@ -219,7 +215,6 @@ const styles = StyleSheet.create({
     width: width,
     alignItems: 'center',
     justifyContent: 'flex-end',
-    // paddingBottom: 20,
   },
   image: {
     width: width,
@@ -268,12 +263,15 @@ const styles = StyleSheet.create({
   activeStepNumber: {
     color: '#ffffff',
   },
+  contentContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   title: {
     fontSize: 25,
     fontWeight: '700',
     color: '#1F2937',
     textAlign: 'center',
-    // fontFamily: 'Montserrat',
     marginBottom: 12,
     marginTop: 12,
     lineHeight: 32,
@@ -284,11 +282,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
     marginTop: 12,
-    // marginBottom: 24,
+  },
+  buttonContainer: {
+    alignItems: 'center',
+    gap: 12,
   },
   buttonWrapper: {
-    marginTop: 'auto',
     alignItems: 'center',
+    width: '100%',
   },
   button: {
     width: width * 0.6,

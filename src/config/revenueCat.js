@@ -3,16 +3,16 @@ import { Platform } from 'react-native';
 
 const API_KEYS = {
   ios: 'appl_bwytOJSXqaDnJTPBMncYDShpOIn',
-  android: 'YOUR_ANDROID_API_KEY', // Replace with your actual Android key. 
+  android: 'YOUR_ANDROID_API_KEY', // Replace with your actual Android key.
 };
 
-export const initializeRevenueCat = async (userId) => {
+export const initializeRevenueCat =  (userId) => {
   try {
     const apiKey = Platform.OS === 'ios' ? API_KEYS.ios : API_KEYS.android;
 
-    await Purchases.configure({
+    Purchases.configure({
       apiKey,
-      appUserID: userId, // Optional but recommended for user tracking
+      // appUserID: userId, // Optional but recommended for user tracking
     });
 
     console.log('✅ RevenueCat initialized successfully');

@@ -11,6 +11,7 @@ export default function SplashScreen({ navigation }) {
       const premium =
         typeof customerInfo.entitlements.active['pro'] !== 'undefined';
       console.log('Premium status:', premium);
+      console.log('Premium status:', customerInfo.entitlements.active);
       return premium; // Return the value instead of setting state
     } catch (error) {
       console.error('Failed to check premium status:', error);

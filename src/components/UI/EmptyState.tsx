@@ -1,5 +1,13 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  Easing,
+  Image,
+} from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppTheme } from '../../theme/ThemeProvider';
 
@@ -11,14 +19,20 @@ type EmptyStateProps = {
   onAction: () => void;
 };
 
-export default function EmptyState({ title, subtitle, actionLabel, icon = 'add-circle-outline', onAction }: EmptyStateProps): React.ReactElement {
+export default function EmptyState({
+  title,
+  subtitle,
+  actionLabel,
+  icon = 'add-circle-outline',
+  onAction,
+}: EmptyStateProps): React.ReactElement {
   const { colors, spacing, radius, typography } = useAppTheme();
-  
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const iconRotate = useRef(new Animated.Value(0)).current;
-  
+
   useEffect(() => {
     // Start animations when component mounts
     Animated.parallel([
@@ -60,38 +74,56 @@ export default function EmptyState({ title, subtitle, actionLabel, icon = 'add-c
   });
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
-        styles.container, 
-        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
+        styles.container,
+        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
       ]}
     >
-      <Animated.View style={{ transform: [{ rotate: rotation }] }}>
+      {/* <Animated.View style={{ transform: [{ rotate: rotation }] }}>
         <Icon name={icon} size={80} color={colors.primary} />
-      </Animated.View>
-      
-      <Text style={[styles.title, typography.headlineMedium, { color: colors.text, marginTop: spacing.lg }]}>
+      </Animated.View> */}
+      <Image
+        source={require('../../../assets/img/noprofile.png')}
+        style={styles.logoImage}
+        resizeMode="contain"
+      />
+      <Text
+        style={[
+          styles.title,
+          typography.headlineMedium,
+          { color: colors.text, marginTop: spacing.lg },
+        ]}
+      >
         {title}
       </Text>
-      
-      <Text style={[styles.subtitle, typography.bodyLarge, { color: colors.textSecondary, marginTop: spacing.sm }]}>
+
+      <Text
+        style={[
+          styles.subtitle,
+          typography.bodyLarge,
+          { color: colors.textSecondary, marginTop: spacing.sm },
+        ]}
+      >
         {subtitle}
       </Text>
-      
+
       <TouchableOpacity
         onPress={onAction}
         style={[
           styles.button,
-          { 
-            backgroundColor: colors.primary, 
+          {
+            backgroundColor: colors.primary,
             marginTop: spacing.xl,
             borderRadius: radius.md,
             paddingVertical: spacing.md,
             paddingHorizontal: spacing.xl,
-          }
+          },
         ]}
       >
-        <Text style={[typography.labelLarge, { color: '#fff' }]}>{actionLabel}</Text>
+        <Text style={[typography.labelLarge, { color: '#fff' }]}>
+          {actionLabel}
+        </Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -120,5 +152,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+  },
+  logoImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 8,
+    marginRight: 12,
   },
 });
