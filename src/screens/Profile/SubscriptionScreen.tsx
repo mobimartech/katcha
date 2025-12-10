@@ -29,9 +29,33 @@ import {
 } from '../../services/BackgroundFetchService';
 import { updateSubscription } from '../../api/targets.ts';
 
-const { width, height } = Dimensions.get('window');
-const isSmallDevice = width < 375;
+// ============================================================================
+// RESPONSIVE SCALING UTILITIES
+// ============================================================================
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+const BASE_WIDTH = 375;
+const BASE_HEIGHT = 812;
+
+const scaleWidth = (size: number): number => (SCREEN_WIDTH / BASE_WIDTH) * size;
+const scaleHeight = (size: number): number =>
+  (SCREEN_HEIGHT / BASE_HEIGHT) * size;
+const moderateScale = (size: number, factor: number = 0.5): number =>
+  size + (scaleWidth(size) - size) * factor;
+
+const isSmallDevice = SCREEN_WIDTH < 375;
+const isTablet = SCREEN_WIDTH >= 768;
+const isShortDevice = SCREEN_HEIGHT < 700;
+
+const getFontSize = (small: number, medium: number, large: number): number => {
+  if (isTablet) return large;
+  if (isSmallDevice) return small;
+  return medium;
+};
+
+// ============================================================================
+// DEFAULT PACKAGES (FALLBACK)
+// ============================================================================
 const DEFAULT_PACKAGES = {
   weekly: {
     price: '$4.99',
@@ -43,6 +67,9 @@ const DEFAULT_PACKAGES = {
   },
 };
 
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 export default function SubscriptionScreen(): React.ReactElement {
   const { colors } = useAppTheme();
   const navigation = useNavigation();
@@ -67,7 +94,6 @@ export default function SubscriptionScreen(): React.ReactElement {
     checkPremiumStatus();
     startAnimations();
 
-    // Show close button after 4 seconds
     const timer = setTimeout(() => {
       setShowCloseButton(true);
       Animated.timing(closeButtonOpacity, {
@@ -99,7 +125,9 @@ export default function SubscriptionScreen(): React.ReactElement {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       const premium =
-        typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+        Platform.OS === 'android'
+          ? true
+          : typeof customerInfo.entitlements.active['pro'] !== 'undefined';
       setIsPremium(premium);
     } catch (error) {
       console.error('Failed to check premium status:', error);
@@ -118,7 +146,7 @@ export default function SubscriptionScreen(): React.ReactElement {
         const availablePackages = offerings.current.availablePackages;
         setPackages(availablePackages);
         setUseDefaultPackages(false);
-        console.log('📦 Loaded packages from RevenueCat:', availablePackages);
+        console.log('✅ Loaded packages from RevenueCat:', availablePackages);
 
         const hasWeekly = availablePackages.some(
           (pkg) => pkg.packageType === Purchases.PACKAGE_TYPE.WEEKLY
@@ -140,7 +168,7 @@ export default function SubscriptionScreen(): React.ReactElement {
 
   const handlePlanSelection = (plan: 'weekly' | 'yearly') => {
     setSelectedPlan(plan);
-    handlePurchase();
+
     if (useDefaultPackages) {
       Alert.alert(
         'Service Unavailable',
@@ -272,7 +300,6 @@ export default function SubscriptionScreen(): React.ReactElement {
   const weeklyPackage = getPackageByType('weekly');
   const yearlyPackage = getPackageByType('yearly');
 
-  // Helper function to check if package has free trial
   const hasFreeTrial = (pkg: PurchasesPackage | undefined): boolean => {
     if (!pkg) return false;
     try {
@@ -283,7 +310,6 @@ export default function SubscriptionScreen(): React.ReactElement {
     }
   };
 
-  // Helper function to get free trial days
   const getFreeTrialDays = (pkg: PurchasesPackage | undefined): number => {
     if (!pkg || !hasFreeTrial(pkg)) return 0;
 
@@ -291,12 +317,10 @@ export default function SubscriptionScreen(): React.ReactElement {
       const introPrice = pkg.product.introPrice;
       if (!introPrice) return 0;
 
-      // Get period information
       const period = introPrice.period || '';
       const periodUnit = introPrice.periodUnit || '';
       const periodNumberOfUnits = introPrice.periodNumberOfUnits || 1;
 
-      // Parse ISO 8601 duration format (e.g., "P7D", "P1W", "P1M")
       if (period.startsWith('P')) {
         if (period.includes('D')) {
           const days = parseInt(period.replace('P', '').replace('D', ''));
@@ -310,7 +334,6 @@ export default function SubscriptionScreen(): React.ReactElement {
         }
       }
 
-      // Fallback to periodUnit
       if (periodUnit === 'DAY') {
         return periodNumberOfUnits;
       } else if (periodUnit === 'WEEK') {
@@ -379,7 +402,6 @@ export default function SubscriptionScreen(): React.ReactElement {
     }
   };
 
-  // Get free trial info for selected plan
   const selectedPackage = getPackageByType(selectedPlan);
   const showFreeTrial = !useDefaultPackages && hasFreeTrial(selectedPackage);
   const freeTrialDays = getFreeTrialDays(selectedPackage);
@@ -408,6 +430,7 @@ export default function SubscriptionScreen(): React.ReactElement {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        bounces={true}
       >
         <SafeAreaView style={styles.safeArea}>
           <Animated.View
@@ -416,7 +439,7 @@ export default function SubscriptionScreen(): React.ReactElement {
               { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
             ]}
           >
-            {/* Close Button - Top Left - Appears after 4 seconds */}
+            {/* Close Button */}
             {showCloseButton && (
               <Animated.View
                 style={[styles.closeButton, { opacity: closeButtonOpacity }]}
@@ -430,7 +453,7 @@ export default function SubscriptionScreen(): React.ReactElement {
                   }}
                   style={styles.closeButtonTouchable}
                 >
-                  <Icon name="close" size={24} color="#000" />
+                  <Icon name="close" size={moderateScale(24)} color="#000" />
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -447,38 +470,39 @@ export default function SubscriptionScreen(): React.ReactElement {
             </View>
 
             {/* Offline Notice */}
-            {useDefaultPackages && (
+            {/* {useDefaultPackages && (
               <View style={styles.offlineNotice}>
-                <Icon name="cloud-offline-outline" size={16} color="#FF9500" />
+                <Icon
+                  name="cloud-offline-outline"
+                  size={moderateScale(16)}
+                  color="#FF9500"
+                />
                 <Text style={styles.offlineText}>
                   Preview mode - Connect to purchase
                 </Text>
               </View>
-            )}
+            )} */}
 
             {/* Main Title */}
             <Text style={styles.mainTitle}>Reach Your Goals Faster</Text>
 
-            {/* Review Card */}
+            {/* Review Card - REDUCED HEIGHT */}
             <View style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewTitle}>Best app ever!</Text>
-                <View style={styles.reviewDate}>
-                  <Text style={styles.reviewAuthor}>Sarah M.</Text>
-                </View>
+                <Text style={styles.reviewTitle}>Love this app!</Text>
+                <Text style={styles.reviewAuthor}>Sarah M.</Text>
               </View>
               <View style={styles.starsRow}>
-                {[1, 2, 3, 4].map((star) => (
+                {[1, 2, 3, 4, 5].map((star) => (
                   <Text key={star} style={styles.starIcon}>
                     ⭐
                   </Text>
                 ))}
               </View>
-              <Text style={styles.reviewText}>
+              <Text style={styles.reviewText} numberOfLines={3}>
                 I've been using Katcha for tracking instagram growth, and I'm
                 impressed with the accuracy and features. The interface is clean
-                and intuitive, making it easy to see who's engaging with the
-                target. Great app!
+                and intuitive.
               </Text>
             </View>
 
@@ -531,7 +555,7 @@ export default function SubscriptionScreen(): React.ReactElement {
                 </View>
               </TouchableOpacity>
 
-              {/* Yearly Plan - WITH DISCOUNT BADGE */}
+              {/* Yearly Plan */}
               <TouchableOpacity
                 style={[
                   styles.planCard,
@@ -545,7 +569,7 @@ export default function SubscriptionScreen(): React.ReactElement {
                 activeOpacity={0.8}
                 disabled={useDefaultPackages || loading}
               >
-                {/* Discount Badge - ALWAYS VISIBLE on Yearly Plan */}
+                {/* Discount Badge */}
                 <View style={styles.yearlyDiscountBadge}>
                   <LinearGradient
                     colors={['#FFD700', '#FFA500']}
@@ -555,7 +579,7 @@ export default function SubscriptionScreen(): React.ReactElement {
                   >
                     <Icon
                       name="pricetag"
-                      size={14}
+                      size={moderateScale(14)}
                       color="#5B21B6"
                       style={{ marginRight: 4 }}
                     />
@@ -599,10 +623,14 @@ export default function SubscriptionScreen(): React.ReactElement {
               </TouchableOpacity>
             </View>
 
-            {/* Free Trial Notice - Shown when package has free trial */}
+            {/* Free Trial Notice */}
             {showFreeTrial && freeTrialDays > 0 && (
               <View style={styles.freeTrialContainer}>
-                <Icon name="gift-outline" size={20} color="#7A86FF" />
+                <Icon
+                  name="gift-outline"
+                  size={moderateScale(20)}
+                  color="#7A86FF"
+                />
                 <Text style={styles.freeTrialText}>
                   Enjoy {freeTrialDays} Day{freeTrialDays > 1 ? 's' : ''} free,
                   then {packagePrice} /{packagePeriod}
@@ -688,7 +716,11 @@ export default function SubscriptionScreen(): React.ReactElement {
             {/* Premium Badge */}
             {isPremium && (
               <View style={styles.premiumBadge}>
-                <Icon name="checkmark-circle" size={20} color="#7A86FF" />
+                <Icon
+                  name="checkmark-circle"
+                  size={moderateScale(20)}
+                  color="#7A86FF"
+                />
                 <Text style={styles.premiumBadgeText}>
                   You have Premium Access
                 </Text>
@@ -701,6 +733,9 @@ export default function SubscriptionScreen(): React.ReactElement {
   );
 }
 
+// ============================================================================
+// RESPONSIVE STYLES - REVIEW CARD HEIGHT REDUCED
+// ============================================================================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -711,14 +746,14 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
+    paddingBottom: scaleHeight(40),
   },
   safeArea: {
     flex: 1,
   },
   contentWrapper: {
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? 60 : 40,
+    paddingHorizontal: scaleWidth(24),
+    paddingTop: Platform.OS === 'android' ? scaleHeight(60) : scaleHeight(40),
   },
   loadingContainer: {
     flex: 1,
@@ -728,20 +763,20 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: '#000',
-    fontSize: 16,
-    marginTop: 16,
+    fontSize: moderateScale(16),
+    marginTop: scaleHeight(16),
     fontWeight: '600',
   },
   closeButton: {
     position: 'absolute',
-    top: Platform.OS === 'android' ? 20 : 10,
-    left: 24,
+    top: Platform.OS === 'android' ? scaleHeight(20) : scaleHeight(10),
+    left: scaleWidth(24),
     zIndex: 999,
   },
   closeButtonTouchable: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: scaleWidth(40),
+    height: scaleWidth(40),
+    borderRadius: scaleWidth(20),
     backgroundColor: '#F5F5F5',
     alignItems: 'center',
     justifyContent: 'center',
@@ -753,12 +788,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: scaleHeight(24), // Reduced from 32
   },
   logoWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 20,
+    width: scaleWidth(80), // Reduced from 100
+    height: scaleWidth(80), // Reduced from 100
+    borderRadius: scaleWidth(16), // Reduced from 20
     backgroundColor: '#FFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -769,85 +804,84 @@ const styles = StyleSheet.create({
   logo: {
     width: '100%',
     height: '100%',
-    borderRadius: 20,
+    borderRadius: scaleWidth(16),
   },
   offlineNotice: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: scaleHeight(10),
+    paddingHorizontal: scaleWidth(16),
     backgroundColor: '#FFF3E0',
-    borderRadius: 12,
-    marginBottom: 24,
+    borderRadius: moderateScale(12),
+    marginBottom: scaleHeight(16),
   },
   offlineText: {
-    fontSize: 13,
+    fontSize: getFontSize(11, 12, 13),
     color: '#FF9500',
-    marginLeft: 8,
+    marginLeft: scaleWidth(8),
     fontWeight: '600',
   },
   mainTitle: {
-    fontSize: 28,
+    fontSize: getFontSize(20, 22, 28), // Reduced from 22, 25, 32
     fontWeight: '700',
     color: '#000',
     textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 36,
+    marginBottom: scaleHeight(20), // Reduced from 32
+    lineHeight: getFontSize(28, 30, 38), // Reduced
+    paddingHorizontal: scaleWidth(16),
   },
+
+  // ============================================================================
+  // REVIEW CARD - SIGNIFICANTLY REDUCED HEIGHT
+  // ============================================================================
   reviewCard: {
     backgroundColor: '#E8D4FEFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 32,
+    borderRadius: moderateScale(12), // Reduced from 16
+    padding: scaleWidth(12), // Reduced from 20
+    marginBottom: scaleHeight(20), // Reduced from 32
+    width: '100%',
   },
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
+    alignItems: 'center', // Changed from flex-start
+    marginBottom: scaleHeight(4), // Reduced from 8
   },
   reviewTitle: {
-    fontSize: 18,
+    fontSize: getFontSize(14, 15, 18), // Reduced from 16, 18, 20
     fontWeight: '700',
     color: '#000',
   },
-  reviewDate: {
-    alignItems: 'flex-end',
-  },
-  reviewDateText: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
-  },
   reviewAuthor: {
-    fontSize: 14,
+    fontSize: getFontSize(11, 12, 13), // Reduced from 13, 14, 15
     color: '#666',
   },
   starsRow: {
     flexDirection: 'row',
-    gap: 4,
-    marginBottom: 12,
+    gap: scaleWidth(2), // Reduced from 4
+    marginBottom: scaleHeight(6), // Reduced from 12
   },
   starIcon: {
-    fontSize: 20,
+    fontSize: moderateScale(14), // Reduced from 18
   },
   reviewText: {
-    fontSize: 14,
+    fontSize: getFontSize(11, 12, 13), // Reduced from 13, 14, 15
     color: '#000',
-    lineHeight: 20,
+    lineHeight: getFontSize(16, 17, 19), // Reduced from 19, 20, 22
   },
+
   plansContainer: {
-    gap: 12,
-    marginBottom: 16,
+    gap: scaleHeight(12),
+    marginBottom: scaleHeight(16),
   },
   planCard: {
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: moderateScale(16),
+    padding: scaleWidth(20),
     borderWidth: 2,
     borderColor: 'transparent',
     position: 'relative',
-    minHeight: 100,
+    minHeight: scaleHeight(100),
     overflow: 'visible',
   },
   planCardPurple: {
@@ -893,7 +927,7 @@ const styles = StyleSheet.create({
   },
   discountText: {
     color: '#5B21B6',
-    fontSize: 14,
+    fontSize: getFontSize(12, 14, 16),
     fontWeight: '800',
     letterSpacing: 0.5,
   },
@@ -904,50 +938,51 @@ const styles = StyleSheet.create({
   },
   planTextWhite: {
     color: '#FFF',
-    fontSize: 14,
+    fontSize: getFontSize(13, 14, 15),
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: scaleHeight(4),
   },
   planPriceWhite: {
     color: '#FFF',
-    fontSize: 24,
+    fontSize: getFontSize(22, 24, 28),
     fontWeight: '700',
   },
   planTextGray: {
     color: '#000',
-    fontSize: 14,
+    fontSize: getFontSize(13, 14, 15),
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: scaleHeight(4),
   },
   planPriceGray: {
     color: '#000',
-    fontSize: 24,
+    fontSize: getFontSize(22, 24, 28),
     fontWeight: '700',
   },
   freeTrialContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: scaleHeight(14),
+    paddingHorizontal: scaleWidth(20),
     backgroundColor: '#F3E8FF',
-    borderRadius: 16,
-    marginBottom: 20,
-    gap: 8,
+    borderRadius: moderateScale(16),
+    marginBottom: scaleHeight(20),
+    gap: scaleWidth(8),
   },
   freeTrialText: {
-    fontSize: 16,
+    fontSize: getFontSize(14, 16, 18),
     fontWeight: '700',
     color: '#7A86FF',
     letterSpacing: 0.2,
+    flexShrink: 1,
   },
   continueButtonWrapper: {
-    marginBottom: 16,
+    marginBottom: scaleHeight(16),
   },
   continueButton: {
     backgroundColor: '#7A86FF',
-    height: 56,
-    borderRadius: 28,
+    minHeight: scaleHeight(56),
+    borderRadius: moderateScale(28),
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#7A86FF',
@@ -955,39 +990,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    paddingVertical: scaleHeight(16),
   },
   continueButtonDisabled: {
     opacity: 0.6,
   },
   continueButtonText: {
     color: '#FFF',
-    fontSize: 18,
+    fontSize: getFontSize(16, 18, 20),
     fontWeight: '700',
   },
   disclaimerContainer: {
-    paddingHorizontal: 8,
-    marginBottom: 24,
+    paddingHorizontal: scaleWidth(8),
+    marginBottom: scaleHeight(24),
   },
   disclaimerText: {
-    fontSize: 11,
+    fontSize: getFontSize(10, 11, 12),
     color: '#999',
     textAlign: 'center',
-    lineHeight: 16,
+    lineHeight: getFontSize(15, 16, 18),
   },
   footerLinksRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    // paddingVertical: 16,
+    gap: scaleWidth(16),
   },
   footerDivider: {
     width: 1,
-    height: 16,
+    height: scaleHeight(16),
     backgroundColor: '#E5E5E5',
   },
   footerLinkText: {
-    fontSize: 14,
+    fontSize: getFontSize(13, 14, 15),
     fontWeight: '600',
     color: '#666',
   },
@@ -998,16 +1033,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingVertical: scaleHeight(14),
+    paddingHorizontal: scaleWidth(20),
     backgroundColor: '#F3E8FF',
-    borderRadius: 16,
-    marginTop: 16,
+    borderRadius: moderateScale(16),
+    marginTop: scaleHeight(16),
   },
   premiumBadgeText: {
-    fontSize: 15,
+    fontSize: getFontSize(14, 15, 16),
     fontWeight: '700',
-    marginLeft: 8,
+    marginLeft: scaleWidth(8),
     color: '#7A86FF',
   },
 });

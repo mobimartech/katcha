@@ -61,6 +61,11 @@ export default function HomeScreen({
   const [checkingSubscription, setCheckingSubscription] = useState(true);
 
   const checkSubscriptionStatus = async () => {
+    if (Platform.OS === 'android') {
+      setIsSubscribed(true);
+      return true;
+    }
+
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       const hasActiveSubscription =
@@ -601,9 +606,7 @@ const AccountCard = ({
                 <View style={styles.androidBlurOverlay}>
                   <View style={styles.blurContent}>
                     <Icon name="lock-closed" size={32} color={colors.primary} />
-                    <Text style={[styles.blurTitle, { color: colors.text }]}>
-                      Premium Feature
-                    </Text>
+
                     <Text
                       style={[
                         styles.blurSubtitle,
@@ -612,16 +615,6 @@ const AccountCard = ({
                     >
                       Subscribe to view metrics
                     </Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.unlockButton,
-                        { backgroundColor: colors.primary },
-                      ]}
-                      onPress={onSubscribePress}
-                    >
-                      <Text style={styles.unlockButtonText}>Unlock Now</Text>
-                      <Icon name="arrow-forward" size={16} color="#ffffff" />
-                    </TouchableOpacity>
                   </View>
                 </View>
               )}

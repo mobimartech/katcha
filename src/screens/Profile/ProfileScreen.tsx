@@ -11,6 +11,7 @@ import {
   Image,
   TouchableOpacity,
   Linking,
+  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useAppTheme, useToggleTheme } from '../../theme/ThemeProvider';
@@ -262,7 +263,7 @@ export default function ProfileScreen({
           <View style={{ height: 10 }} />
 
           {/* Subscription Plan Item - conditionally rendered */}
-          {showSubscription && (
+          {showSubscription && Platform.OS !== 'android' && (
             <Pressable
               onPress={() => rootNavigation.navigate('Subscription')}
               style={[

@@ -2,6 +2,7 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+apply plugin: 'com.google.gms.google-services'
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -78,38 +79,54 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk 36
 
-    namespace "com.Katcha"
+    namespace "org.katcha.app"
     defaultConfig {
-        applicationId "com.mni.social.follower.tracker"
+        applicationId "org.katcha.app"
         minSdkVersion 24
         targetSdkVersion 36
         versionCode 1
         versionName "1.0"
         missingDimensionStrategy 'react-native-camera', 'general'
         missingDimensionStrategy 'store', 'play'
-            multiDexEnabled true  // ✅ Add this line
-
+        multiDexEnabled true  // ✅ Add this line
+        //  ndk {
+        //     abiFilters "arm64-v8a", "armeabi-v7a"
+        // }
     }
+    
     signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+        release {
+            if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
+                storeFile file(MYAPP_UPLOAD_STORE_FILE)
+                storePassword MYAPP_UPLOAD_STORE_PASSWORD
+                keyAlias MYAPP_UPLOAD_KEY_ALIAS
+                keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+            }
         }
     }
+    
     buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
+            signingConfig signingConfigs.release
+            minifyEnabled false  // Temporarily disable
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
     }
+    //     packagingOptions {
+    //     // Handle duplicate shared libraries
+    //     pickFirst 'lib/x86/libc++_shared.so'
+    //     pickFirst 'lib/x86_64/libc++_shared.so'
+    //     pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+    //     pickFirst 'lib/arm64-v8a/libc++_shared.so'
+        
+    //     // Exclude any remaining problematic libraries
+    //     exclude 'lib/x86_64/libopencv_java4.so'
+    //     exclude 'lib/x86_64/libpdfiumandroid.so'
+    //     exclude 'lib/arm64-v8a/libpdfiumandroid.so'
+    // }
 }
 
 dependencies {
@@ -122,4 +139,5 @@ dependencies {
         implementation jscFlavor
     }
     implementation project(':react-native-vector-icons')
+    
 }

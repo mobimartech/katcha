@@ -73,7 +73,7 @@ const DirectPurchaseScreen: React.FC<DirectPurchaseScreenProps> = ({ navigation,
 
   const checkPremiumStatus = async () => {
     try {
-      const premium = await DirectIAPService.checkPremiumStatus();
+      const premium =Platform.OS === 'android'?true: await DirectIAPService.checkPremiumStatus();
 
       if (premium && fromGenerate) {
         // User is already premium, go back to generate
@@ -124,7 +124,7 @@ const DirectPurchaseScreen: React.FC<DirectPurchaseScreenProps> = ({ navigation,
 
       if (result.success) {
         // Check premium status after purchase
-        const isPremiumNow = await DirectIAPService.checkPremiumStatus();
+        const isPremiumNow =Platform.OS === 'android'?true: await DirectIAPService.checkPremiumStatus();
 
         if (isPremiumNow) {
           Alert.alert(
@@ -171,7 +171,7 @@ const DirectPurchaseScreen: React.FC<DirectPurchaseScreenProps> = ({ navigation,
       const success = await DirectIAPService.restorePurchases();
 
       if (success) {
-        const isPremium = await DirectIAPService.checkPremiumStatus();
+        const isPremium =Platform.OS === 'android'?true: await DirectIAPService.checkPremiumStatus();
 
         if (isPremium) {
           Alert.alert(

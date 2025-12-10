@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "691913957787",
+    "project_id": "katcha-c9a23",
+    "storage_bucket": "katcha-c9a23.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691913957787:android:3a104a6e4d0de248fa013e",
+        "android_client_info": {
+          "package_name": "com.mni.social.follower.tracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "691913957787-a4c9n71hdn4qvb8avc6bth5i4c4fcb2i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mni.social.follower.tracker",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjw0toPod_dgMVXIPpc7km67o_KmzRL7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "691913957787-5965k7f0eftum8g5egrjccfr1u5vmh72.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mmt.insectsappid"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691913957787:android:81aff44e808187a5fa013e",
+        "android_client_info": {
+          "package_name": "org.katcha.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjw0toPod_dgMVXIPpc7km67o_KmzRL7Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "691913957787-8qt0f4cvq9hjb414ija6aj8c0ao3nbsr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "691913957787-5965k7f0eftum8g5egrjccfr1u5vmh72.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mmt.insectsappid"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

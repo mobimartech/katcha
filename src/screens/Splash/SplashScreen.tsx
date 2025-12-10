@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SafeAreaView, StyleSheet, Image } from 'react-native';
+import { SafeAreaView, StyleSheet, Image, Platform } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { getOnboardingComplete } from '../../utils/onboarding';
 import Purchases, { PurchasesPackage } from 'react-native-purchases';
@@ -9,7 +9,9 @@ export default function SplashScreen({ navigation }) {
     try {
       const customerInfo = await Purchases.getCustomerInfo();
       const premium =
-        typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+        Platform.OS === 'android'
+          ? true
+          : typeof customerInfo.entitlements.active['pro'] !== 'undefined';
       console.log('Premium status:', premium);
       console.log('Premium status:', customerInfo.entitlements.active);
       return premium; // Return the value instead of setting state
@@ -29,7 +31,7 @@ export default function SplashScreen({ navigation }) {
           if (!hasCompletedOnboarding) {
             navigation.replace('Onboarding');
           } else {
-            if (isPremium) {
+            if (isPremium || Platform.OS === 'android') {
               console.log('Navigating to MainTabs - User is premium');
               navigation.replace('MainTabs');
             } else {

@@ -8,6 +8,7 @@ import {
   Image,
   Animated,
   PanResponder,
+  Platform,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { setOnboardingComplete } from '../utils/onboarding';
@@ -77,7 +78,13 @@ export default function OnboardingScreen({ navigation }) {
       }
     } else {
       await setOnboardingComplete();
-      navigation.replace('Subscription');
+
+      Platform.OS === 'ios'
+        ? navigation.replace('Subscription')
+        : navigation.reset({
+            index: 0,
+            routes: [{ name: 'MainTabs' }],
+          });
     }
   };
 
